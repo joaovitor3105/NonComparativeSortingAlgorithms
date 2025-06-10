@@ -12,5 +12,4 @@ void performanceTestAllCases(int size);
 
 // Teste principal
 void runAllTests();
-
 #endif
