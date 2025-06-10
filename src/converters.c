@@ -1,5 +1,9 @@
 #include <stdlib.h>
 #include "converters.h"
+#include "data_structures.h"
+#include "utils.h"
+#include <string.h>
+
 // ========== CONVERSÕES - ESTRUTURAS DINÂMICAS ==========
 
 // === CONVERSÕES LISTA LIGADA ===

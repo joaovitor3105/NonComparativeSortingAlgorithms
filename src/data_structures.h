@@ -77,24 +77,19 @@ typedef struct
     int capacity;
 } LinearQueue;
 
-// Lista
-LinkedList *createList();
-void insertList(LinkedList *list, int value);
-void appendList(LinkedList *list, int value);
-void destroyList(LinkedList *list);
-
-// pilha
-Stack *createStack(int capacity);
-void push(Stack *stack, int value);
-int pop(Stack *stack);
-int isEmpty(Stack *stack);
-void destroyStack(Stack *stack);
-
-// Fila
-Queue *createQueue(int capacity);
-void enqueue(Queue *queue, int value);
-int dequeue(Queue *queue);
-int isQueueEmpty(Queue *queue);
-void destroyQueue(Queue *queue);
-
+// Lista Linear
+LinearList *createLinearList(int capacity);
+void appendLinearList(LinearList *list, int value);
+void destroyLinearList(LinearList *list);
+// Pilha Linear
+LinearStack *createLinearStack(int capacity);
+void pushLinear(LinearStack *stack, int value);
+int popLinear(LinearStack *stack);
+int isLinearStackEmpty(LinearStack *stack);
+void destroyLinearStack(LinearStack *stack);
+// Fila Linear
+LinearQueue *createLinearQueue(int capacity);
+void enqueueLinear(LinearQueue *queue, int value);
+int dequeueLinear(LinearQueue *queue);
+void destroyLinearQueue(LinearQueue *queue);
 #endif
