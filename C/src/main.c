@@ -174,11 +174,11 @@ int main()
     printf("Máximo de linhas: %d\n", maxlinhas);
 
     // Testar estrutura ativa definida no config.h
-    printf("\nTestando estrutura ativa: %s\n", getNomeEstrutura(ESTRUTURA_ATIVA));
-    testarEstrutura(ESTRUTURA_ATIVA, maxlinhas);
+    /*printf("\nTestando estrutura ativa: %s\n", getNomeEstrutura(ESTRUTURA_ATIVA));
+    testarEstrutura(ESTRUTURA_ATIVA, maxlinhas);*/
 
     // Para testar todas as estruturas, descomente as linhas abaixo:
-    /*
+
     printf("\n=== TESTANDO TODAS AS ESTRUTURAS ===\n");
 
     testarEstrutura(LISTA_LINEAR, maxlinhas);
@@ -187,7 +187,6 @@ int main()
     testarEstrutura(PILHA_DINAMICA, maxlinhas);
     testarEstrutura(FILA_LINEAR, maxlinhas);
     testarEstrutura(FILA_DINAMICA, maxlinhas);
-    */
 
     return 0;
 }

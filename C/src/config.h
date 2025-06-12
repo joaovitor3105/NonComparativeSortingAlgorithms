@@ -18,7 +18,6 @@ typedef enum
 #define ESTRUTURA_ATIVA LISTA_DINAMICA
 
 // CONFIGURAÇÕES DE ARQUIVO
-#define ARQUIVO_ENTRADA "dataset/ratings.csv"
-#define ARQUIVO_SAIDA "dataset/resultados.csv"
+#define ARQUIVO_ENTRADA "datasets/ratings.csv"
 
 #endif
