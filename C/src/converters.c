@@ -1,0 +1,209 @@
+#include <stdlib.h>
+#include "converters.h"
+#include "data_structures.h"
+#include "utils.h"
+#include <string.h>
+
+// ========== CONVERSÕES - ESTRUTURAS DINÂMICAS ==========
+
+// === CONVERSÕES LISTA LIGADA ===
+int *listToArray(LinkedList *list)
+{
+    if (list->size == 0)
+        return NULL;
+
+    int *array = (int *)malloc(list->size * sizeof(int));
+    Node *current = list->head;
+
+    // Inserir em ordem reversa para manter ordem original
+    for (int i = list->size - 1; i >= 0; i--)
+    {
+        array[i] = current->data;
+        current = current->next;
+    }
+
+    return array;
+}
+
+LinkedList *arrayToList(int *array, int size)
+{
+    LinkedList *list = createList();
+
+    // Inserir em ordem reversa para manter ordem
+    for (int i = size - 1; i >= 0; i--)
+    {
+        insertList(list, array[i]);
+    }
+
+    return list;
+}
+
+// === CONVERSÕES PILHA ===
+int *stackToArray(Stack *stack)
+{
+    if (stack->top < 0)
+        return NULL;
+
+    int size = stack->top + 1;
+    int *array = (int *)malloc(size * sizeof(int));
+
+    // Copiar dados da pilha
+    for (int i = 0; i < size; i++)
+    {
+        array[i] = stack->data[i];
+    }
+
+    return array;
+}
+
+Stack *arrayToStack(int *array, int size)
+{
+    Stack *stack = createStack(size);
+
+    for (int i = 0; i < size; i++)
+    {
+        push(stack, array[i]);
+    }
+
+    return stack;
+}
+
+// === CONVERSÕES FILA ===
+int *queueToArray(Queue *queue)
+{
+    if (queue->size == 0)
+        return NULL;
+
+    int *array = (int *)malloc(queue->size * sizeof(int));
+    int index = queue->front;
+
+    for (int i = 0; i < queue->size; i++)
+    {
+        array[i] = queue->data[index];
+        index = (index + 1) % queue->capacity;
+    }
+
+    return array;
+}
+
+Queue *arrayToQueue(int *array, int size)
+{
+    Queue *queue = createQueue(size);
+
+    for (int i = 0; i < size; i++)
+    {
+        enqueue(queue, array[i]);
+    }
+
+    return queue;
+}
+
+// ========== CONVERSÕES - ESTRUTURAS LINEARES ==========
+
+// === CONVERSÕES LISTA LINEAR ===
+int *linearListToArray(LinearList *list)
+{
+    if (list->size == 0)
+        return NULL;
+
+    int *array = (int *)malloc(list->size * sizeof(int));
+
+    // Copiar dados diretamente
+    for (int i = 0; i < list->size; i++)
+    {
+        array[i] = list->data[i];
+    }
+
+    return array;
+}
+
+LinearList *arrayToLinearList(int *array, int size)
+{
+    LinearList *list = createLinearList(size);
+
+    for (int i = 0; i < size; i++)
+    {
+        appendLinearList(list, array[i]);
+    }
+
+    return list;
+}
+
+// === CONVERSÕES PILHA LINEAR ===
+int *linearStackToArray(LinearStack *stack)
+{
+    if (stack->top < 0)
+        return NULL;
+
+    int size = stack->top + 1;
+    int *array = (int *)malloc(size * sizeof(int));
+
+    // Copiar dados da pilha
+    for (int i = 0; i < size; i++)
+    {
+        array[i] = stack->data[i];
+    }
+
+    return array;
+}
+
+LinearStack *arrayToLinearStack(int *array, int size)
+{
+    LinearStack *stack = createLinearStack(size);
+
+    for (int i = 0; i < size; i++)
+    {
+        pushLinear(stack, array[i]);
+    }
+
+    return stack;
+}
+
+// === CONVERSÕES FILA LINEAR ===
+int *linearQueueToArray(LinearQueue *queue)
+{
+    if (queue->size == 0)
+        return NULL;
+
+    int *array = (int *)malloc(queue->size * sizeof(int));
+    int index = queue->front;
+
+    for (int i = 0; i < queue->size; i++)
+    {
+        array[i] = queue->data[index];
+        index = (index + 1) % queue->capacity;
+    }
+
+    return array;
+}
+
+LinearQueue *arrayToLinearQueue(int *array, int size)
+{
+    LinearQueue *queue = createLinearQueue(size);
+
+    for (int i = 0; i < size; i++)
+    {
+        enqueueLinear(queue, array[i]);
+    }
+
+    return queue;
+}
+
+// ========== FUNÇÕES AUXILIARES ==========
+
+int *copyArray(int *source, int size)
+{
+    int *copy = (int *)malloc(size * sizeof(int));
+    memcpy(copy, source, size * sizeof(int));
+    return copy;
+}
+
+int getStackSize(Stack *stack)
+{
+    return stack->top + 1;
+}
+
+int getLinearStackSize(LinearStack *stack)
+{
+    return stack->top + 1;
+}
