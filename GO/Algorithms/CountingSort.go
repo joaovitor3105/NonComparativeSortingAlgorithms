@@ -5,32 +5,34 @@ func CountingSort(arr []int) []int {
         return arr
     }
     
-    // Encontrar o valor máximo
-    max := arr[0]
-    for _, v := range arr {
-        if v > max {
-            max = v
-        }
-    }
+    // Para ratings: valores vão de 1 a 10 (0.5 a 5.0 multiplicado por 2)
+    const MIN_RATING = 1
+    const MAX_RATING = 10
+    const RANGE_SIZE = MAX_RATING - MIN_RATING + 1
     
     // Criar array de contagem
-    count := make([]int, max+1)
+    count := make([]int, RANGE_SIZE)
     
     // Contar ocorrências
     for _, v := range arr {
-        count[v]++
+        // Garantir que o valor está no range esperado
+        if v >= MIN_RATING && v <= MAX_RATING {
+            count[v-MIN_RATING]++
+        }
     }
     
     // Acumular contagens
-    for i := 1; i <= max; i++ {
+    for i := 1; i < RANGE_SIZE; i++ {
         count[i] += count[i-1]
     }
     
     // Construir array ordenado
     output := make([]int, len(arr))
     for i := len(arr) - 1; i >= 0; i-- {
-        output[count[arr[i]]-1] = arr[i]
-        count[arr[i]]--
+        if arr[i] >= MIN_RATING && arr[i] <= MAX_RATING {
+            output[count[arr[i]-MIN_RATING]-1] = arr[i]
+            count[arr[i]-MIN_RATING]--
+        }
     }
     
     return output
