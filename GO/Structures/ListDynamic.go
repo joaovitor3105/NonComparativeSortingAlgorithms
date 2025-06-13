@@ -7,12 +7,14 @@ type NodeList struct {
 
 type ListDynamic struct {
     head *NodeList
+    tail *NodeList  // ← ADICIONADO: ponteiro para o último elemento
     size int
 }
 
 func NewListDynamic() *ListDynamic {
     return &ListDynamic{
         head: nil,
+        tail: nil,
         size: 0,
     }
 }
@@ -22,12 +24,10 @@ func (l *ListDynamic) Add(value int) {
     
     if l.head == nil {
         l.head = newNode
+        l.tail = newNode  // ← Primeiro elemento é head e tail
     } else {
-        current := l.head
-        for current.next != nil {
-            current = current.next
-        }
-        current.next = newNode
+        l.tail.next = newNode  // ← O(1) - adiciona direto no final!
+        l.tail = newNode       // ← Atualiza tail
     }
     l.size++
 }
@@ -48,6 +48,7 @@ func (l *ListDynamic) ToArray() []int {
 
 func (l *ListDynamic) FromArray(arr []int) {
     l.head = nil
+    l.tail = nil  // ← Resetar tail também
     l.size = 0
     
     for _, v := range arr {
