@@ -6,7 +6,7 @@
 
 // ========== LEITURA PARA ESTRUTURAS LINEARES ==========
 
-int lerMovieIds_LinearList(LinearList **list, int maxLines)
+int lerDados_LinearList(LinearList **list, int maxLines, TipoDado tipoDado)
 {
     FILE *file = fopen(ARQUIVO_ENTRADA, "r");
     if (!file)
@@ -29,28 +29,34 @@ int lerMovieIds_LinearList(LinearList **list, int maxLines)
         return -1;
     }
 
-    printf("Lendo dados para Lista Linear...\n");
+    const char *tipoStr = (tipoDado == MOVIE_IDS) ? "Movie IDs" : "Ratings";
+    printf("Lendo %s para Lista Linear...\n", tipoStr);
+
     while (fgets(linha, sizeof(linha), file) && contador < maxLines)
     {
         if (sscanf(linha, "%d,%d,%f,%ld", &userId, &movieId, &rating, &timestamp) == 4)
         {
-            appendLinearList(*list, movieId);
-            contador++;
-
-            // Mostrar progresso a cada 10000 linhas
-            if (contador % 10000 == 0)
+            int valor;
+            if (tipoDado == MOVIE_IDS)
             {
-                printf("Lidas %d linhas...\n", contador);
+                valor = movieId;
             }
+            else // RATINGS
+            {
+                valor = (int)(rating * 2); // Multiplicar por 2 para converter para int
+            }
+
+            appendLinearList(*list, valor);
+            contador++;
         }
     }
 
     fclose(file);
-    printf("Total de %d movieIds lidos para Lista Linear.\n", contador);
+    printf("Total de %d %s lidos para Lista Linear.\n", contador, tipoStr);
     return contador;
 }
 
-int lerMovieIds_LinearStack(LinearStack **stack, int maxLines)
+int lerDados_LinearStack(LinearStack **stack, int maxLines, TipoDado tipoDado)
 {
     FILE *file = fopen(ARQUIVO_ENTRADA, "r");
     if (!file)
@@ -73,27 +79,34 @@ int lerMovieIds_LinearStack(LinearStack **stack, int maxLines)
         return -1;
     }
 
-    printf("Lendo dados para Pilha Linear...\n");
+    const char *tipoStr = (tipoDado == MOVIE_IDS) ? "Movie IDs" : "Ratings";
+    printf("Lendo %s para Pilha Linear...\n", tipoStr);
+
     while (fgets(linha, sizeof(linha), file) && contador < maxLines)
     {
         if (sscanf(linha, "%d,%d,%f,%ld", &userId, &movieId, &rating, &timestamp) == 4)
         {
-            pushLinear(*stack, movieId);
-            contador++;
-
-            if (contador % 10000 == 0)
+            int valor;
+            if (tipoDado == MOVIE_IDS)
             {
-                printf("Lidas %d linhas...\n", contador);
+                valor = movieId;
             }
+            else // RATINGS
+            {
+                valor = (int)(rating * 2);
+            }
+
+            pushLinear(*stack, valor);
+            contador++;
         }
     }
 
     fclose(file);
-    printf("Total de %d movieIds lidos para Pilha Linear.\n", contador);
+    printf("Total de %d %s lidos para Pilha Linear.\n", contador, tipoStr);
     return contador;
 }
 
-int lerMovieIds_LinearQueue(LinearQueue **queue, int maxLines)
+int lerDados_LinearQueue(LinearQueue **queue, int maxLines, TipoDado tipoDado)
 {
     FILE *file = fopen(ARQUIVO_ENTRADA, "r");
     if (!file)
@@ -116,29 +129,36 @@ int lerMovieIds_LinearQueue(LinearQueue **queue, int maxLines)
         return -1;
     }
 
-    printf("Lendo dados para Fila Linear...\n");
+    const char *tipoStr = (tipoDado == MOVIE_IDS) ? "Movie IDs" : "Ratings";
+    printf("Lendo %s para Fila Linear...\n", tipoStr);
+
     while (fgets(linha, sizeof(linha), file) && contador < maxLines)
     {
         if (sscanf(linha, "%d,%d,%f,%ld", &userId, &movieId, &rating, &timestamp) == 4)
         {
-            enqueueLinear(*queue, movieId);
-            contador++;
-
-            if (contador % 10000 == 0)
+            int valor;
+            if (tipoDado == MOVIE_IDS)
             {
-                printf("Lidas %d linhas...\n", contador);
+                valor = movieId;
             }
+            else // RATINGS
+            {
+                valor = (int)(rating * 2);
+            }
+
+            enqueueLinear(*queue, valor);
+            contador++;
         }
     }
 
     fclose(file);
-    printf("Total de %d movieIds lidos para Fila Linear.\n", contador);
+    printf("Total de %d %s lidos para Fila Linear.\n", contador, tipoStr);
     return contador;
 }
 
 // ========== LEITURA PARA ESTRUTURAS DINÂMICAS ==========
 
-int lerMovieIds_LinkedList(LinkedList **list, int maxLines)
+int lerDados_LinkedList(LinkedList **list, int maxLines, TipoDado tipoDado)
 {
     FILE *file = fopen(ARQUIVO_ENTRADA, "r");
     if (!file)
@@ -161,23 +181,28 @@ int lerMovieIds_LinkedList(LinkedList **list, int maxLines)
         return -1;
     }
 
-    printf("Lendo dados para Lista Ligada...\n");
+    const char *tipoStr = (tipoDado == MOVIE_IDS) ? "Movie IDs" : "Ratings";
+    printf("Lendo %s para Lista Ligada...\n", tipoStr);
 
     // Ler todos os dados primeiro em um array temporário
-    // para manter a ordem original na lista ligada
     int *tempArray = (int *)malloc(maxLines * sizeof(int));
 
     while (fgets(linha, sizeof(linha), file) && contador < maxLines)
     {
         if (sscanf(linha, "%d,%d,%f,%ld", &userId, &movieId, &rating, &timestamp) == 4)
         {
-            tempArray[contador] = movieId;
-            contador++;
-
-            if (contador % 10000 == 0)
+            int valor;
+            if (tipoDado == MOVIE_IDS)
             {
-                printf("Lidas %d linhas...\n", contador);
+                valor = movieId;
             }
+            else // RATINGS
+            {
+                valor = (int)(rating * 2);
+            }
+
+            tempArray[contador] = valor;
+            contador++;
         }
     }
 
@@ -189,11 +214,11 @@ int lerMovieIds_LinkedList(LinkedList **list, int maxLines)
 
     free(tempArray);
     fclose(file);
-    printf("Total de %d movieIds lidos para Lista Ligada.\n", contador);
+    printf("Total de %d %s lidos para Lista Ligada.\n", contador, tipoStr);
     return contador;
 }
 
-int lerMovieIds_Stack(Stack **stack, int maxLines)
+int lerDados_Stack(Stack **stack, int maxLines, TipoDado tipoDado)
 {
     FILE *file = fopen(ARQUIVO_ENTRADA, "r");
     if (!file)
@@ -216,27 +241,34 @@ int lerMovieIds_Stack(Stack **stack, int maxLines)
         return -1;
     }
 
-    printf("Lendo dados para Pilha Dinâmica...\n");
+    const char *tipoStr = (tipoDado == MOVIE_IDS) ? "Movie IDs" : "Ratings";
+    printf("Lendo %s para Pilha Dinâmica...\n", tipoStr);
+
     while (fgets(linha, sizeof(linha), file) && contador < maxLines)
     {
         if (sscanf(linha, "%d,%d,%f,%ld", &userId, &movieId, &rating, &timestamp) == 4)
         {
-            push(*stack, movieId);
-            contador++;
-
-            if (contador % 10000 == 0)
+            int valor;
+            if (tipoDado == MOVIE_IDS)
             {
-                printf("Lidas %d linhas...\n", contador);
+                valor = movieId;
             }
+            else // RATINGS
+            {
+                valor = (int)(rating * 2);
+            }
+
+            push(*stack, valor);
+            contador++;
         }
     }
 
     fclose(file);
-    printf("Total de %d movieIds lidos para Pilha Dinâmica.\n", contador);
+    printf("Total de %d %s lidos para Pilha Dinâmica.\n", contador, tipoStr);
     return contador;
 }
 
-int lerMovieIds_Queue(Queue **queue, int maxLines)
+int lerDados_Queue(Queue **queue, int maxLines, TipoDado tipoDado)
 {
     FILE *file = fopen(ARQUIVO_ENTRADA, "r");
     if (!file)
@@ -259,49 +291,56 @@ int lerMovieIds_Queue(Queue **queue, int maxLines)
         return -1;
     }
 
-    printf("Lendo dados para Fila Dinâmica...\n");
+    const char *tipoStr = (tipoDado == MOVIE_IDS) ? "Movie IDs" : "Ratings";
+    printf("Lendo %s para Fila Dinâmica...\n", tipoStr);
+
     while (fgets(linha, sizeof(linha), file) && contador < maxLines)
     {
         if (sscanf(linha, "%d,%d,%f,%ld", &userId, &movieId, &rating, &timestamp) == 4)
         {
-            enqueue(*queue, movieId);
-            contador++;
-
-            if (contador % 10000 == 0)
+            int valor;
+            if (tipoDado == MOVIE_IDS)
             {
-                printf("Lidas %d linhas...\n", contador);
+                valor = movieId;
             }
+            else // RATINGS
+            {
+                valor = (int)(rating * 2);
+            }
+
+            enqueue(*queue, valor);
+            contador++;
         }
     }
 
     fclose(file);
-    printf("Total de %d movieIds lidos para Fila Dinâmica.\n", contador);
+    printf("Total de %d %s lidos para Fila Dinâmica.\n", contador, tipoStr);
     return contador;
 }
 
 // ========== FUNÇÃO PRINCIPAL PARA ESCOLHER O TIPO DE LEITURA ==========
 
-int lerMovieIds_PorTipo(void **estrutura, TipoEstrutura tipo, int maxLines)
+int lerDados_PorTipo(void **estrutura, TipoEstrutura tipo, TipoDado tipoDado, int maxLines)
 {
     switch (tipo)
     {
     case LISTA_LINEAR:
-        return lerMovieIds_LinearList((LinearList **)estrutura, maxLines);
+        return lerDados_LinearList((LinearList **)estrutura, maxLines, tipoDado);
 
     case LISTA_DINAMICA:
-        return lerMovieIds_LinkedList((LinkedList **)estrutura, maxLines);
+        return lerDados_LinkedList((LinkedList **)estrutura, maxLines, tipoDado);
 
     case PILHA_LINEAR:
-        return lerMovieIds_LinearStack((LinearStack **)estrutura, maxLines);
+        return lerDados_LinearStack((LinearStack **)estrutura, maxLines, tipoDado);
 
     case PILHA_DINAMICA:
-        return lerMovieIds_Stack((Stack **)estrutura, maxLines);
+        return lerDados_Stack((Stack **)estrutura, maxLines, tipoDado);
 
     case FILA_LINEAR:
-        return lerMovieIds_LinearQueue((LinearQueue **)estrutura, maxLines);
+        return lerDados_LinearQueue((LinearQueue **)estrutura, maxLines, tipoDado);
 
     case FILA_DINAMICA:
-        return lerMovieIds_Queue((Queue **)estrutura, maxLines);
+        return lerDados_Queue((Queue **)estrutura, maxLines, tipoDado);
 
     default:
         printf("Tipo de estrutura inválido!\n");

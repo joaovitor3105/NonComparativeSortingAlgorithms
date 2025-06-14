@@ -4,22 +4,20 @@
 #include "data_structures.h"
 #include "config.h"
 
-int lerMovieIds_LinearList(LinearList **list, int maxLines);
+int lerDados_LinearList(LinearList **list, int maxLines, TipoDado tipoDado);
 
-int lerMovieIds_LinearStack(LinearStack **stack, int maxLines);
+int lerDados_LinearStack(LinearStack **stack, int maxLines, TipoDado tipoDado);
 
-int lerMovieIds_LinearQueue(LinearQueue **queue, int maxLines);
+int lerDados_LinearQueue(LinearQueue **queue, int maxLines, TipoDado tipoDado);
 
-int lerMovieIds_LinkedList(LinkedList **list, int maxLines);
+int lerDados_LinkedList(LinkedList **list, int maxLines, TipoDado tipoDado);
 
-int lerMovieIds_Stack(Stack **stack, int maxLines);
+int lerDados_Stack(Stack **stack, int maxLines, TipoDado tipoDado);
 
-int lerMovieIds_Queue(Queue **queue, int maxLines);
+int lerDados_Queue(Queue **queue, int maxLines, TipoDado tipoDado);
 
-int lerMovieIds_PorTipo(void **estrutura, TipoEstrutura tipo, int maxLines);
+int lerDados_PorTipo(void **estrutura, TipoEstrutura tipo, TipoDado tipoDado, int maxLines);
 
 const char *getNomeEstrutura(TipoEstrutura tipo);
-
-int lerMovieIds(int *movieIds);
 
 #endif

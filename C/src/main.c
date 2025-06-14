@@ -3,6 +3,7 @@
 #include <time.h>
 #include "data_structures.h"
 #include "ratings_reader.h"
+#include "radix_sort.h"
 #include "converters.h"
 #include "counting_sort.h"
 #include "config.h"
@@ -14,18 +15,17 @@ double measureExecutionTime(clock_t start, clock_t end)
 }
 
 // Função para testar uma estrutura específica
-void testarEstrutura(TipoEstrutura tipo, int maxLines)
+void testarEstrutura(TipoEstrutura tipo_estrutura, int maxLines)
 {
-    printf("\n========== TESTANDO %s ==========\n", getNomeEstrutura(tipo));
+    printf("\n========== TESTANDO %s ==========\n", getNomeEstrutura(tipo_estrutura));
 
     void *estrutura = NULL;
     clock_t inicio, fim;
     double tempoLeitura, tempoConversao, tempoOrdenacao, tempoReconversao;
 
     // 1. LEITURA
-    printf("1. Lendo dados do CSV...\n");
     inicio = clock();
-    int numElementos = lerMovieIds_PorTipo(&estrutura, tipo, maxLines);
+    int numElementos = lerDados_PorTipo(&estrutura, tipo_estrutura, TIPO_DADO, maxLines);
     fim = clock();
     tempoLeitura = measureExecutionTime(inicio, fim);
 
@@ -35,14 +35,11 @@ void testarEstrutura(TipoEstrutura tipo, int maxLines)
         return;
     }
 
-    printf("   -> %d elementos lidos em %.6f segundos\n", numElementos, tempoLeitura);
-
     // 2. CONVERSÃO PARA ARRAY
-    printf("2. Convertendo para array...\n");
     inicio = clock();
     int *array = NULL;
 
-    switch (tipo)
+    switch (tipo_estrutura)
     {
     case LISTA_LINEAR:
         array = linearListToArray((LinearList *)estrutura);
@@ -72,33 +69,40 @@ void testarEstrutura(TipoEstrutura tipo, int maxLines)
         return;
     }
 
-    printf("   -> Conversão concluída em %.6f segundos\n", tempoConversao);
-
     // 3. ORDENAÇÃO
-    printf("3. Executando Counting Sort...\n");
     inicio = clock();
-    countingSort(array, numElementos);
+    // Escolher o método de ordenação
+    switch (METODO_ORDENACAO)
+    {
+    case COUNTING_SORT:
+        countingSort(array, numElementos);
+        break;
+    case RADIX_SORT:
+        radixSort(array, numElementos);
+        break;
+    default:
+        printf("Método de ordenação desconhecido!\n");
+        free(array);
+        return;
+    }
     fim = clock();
     tempoOrdenacao = measureExecutionTime(inicio, fim);
-
-    printf("   -> Ordenação concluída em %.6f segundos\n", tempoOrdenacao);
 
     // Verificar se está ordenado
     if (isArraySorted(array, numElementos))
     {
-        printf("   -> ✓ Array está ordenado corretamente!\n");
+        printf("-> ✓ Array foi ordenado corretamente!\n");
     }
     else
     {
-        printf("   -> ✗ ERRO: Array não está ordenado!\n");
+        printf("-> ✗ ERRO: Array não foi ordenado!\n");
     }
 
     // 4. RECONVERSÃO PARA ESTRUTURA ORIGINAL
-    printf("4. Convertendo de volta para a estrutura original...\n");
     inicio = clock();
 
     // Liberar estrutura original
-    switch (tipo)
+    switch (tipo_estrutura)
     {
     case LISTA_LINEAR:
         destroyLinearList((LinearList *)estrutura);
@@ -129,8 +133,6 @@ void testarEstrutura(TipoEstrutura tipo, int maxLines)
     fim = clock();
     tempoReconversao = measureExecutionTime(inicio, fim);
 
-    printf("   -> Reconversão concluída em %.6f segundos\n", tempoReconversao);
-
     // 5. RESULTADOS FINAIS
     double tempoTotal = tempoLeitura + tempoConversao + tempoOrdenacao + tempoReconversao;
 
@@ -144,7 +146,7 @@ void testarEstrutura(TipoEstrutura tipo, int maxLines)
     // Limpar memória
     free(array);
 
-    switch (tipo)
+    switch (tipo_estrutura)
     {
     case LISTA_LINEAR:
         destroyLinearList((LinearList *)estrutura);
@@ -169,7 +171,7 @@ void testarEstrutura(TipoEstrutura tipo, int maxLines)
 
 int main()
 {
-    printf("=== TESTE DE COUNTING SORT COM DIFERENTES ESTRUTURAS ===\n");
+    printf("\n\n\n\n=== TESTE DE %s COM DIFERENTES ESTRUTURAS ===\n", METODO_ORDENACAO == COUNTING_SORT ? "COUNTING SORT" : "RADIX SORT");
     printf("Arquivo: %s\n", ARQUIVO_ENTRADA);
     printf("Máximo de linhas: %d\n", maxlinhas);
 
