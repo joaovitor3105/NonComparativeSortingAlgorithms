@@ -433,7 +433,7 @@ void printSummaryStats(ResultadoTeste resultados[], int numResultados)
 int main()
 {
     printf("\n");
-    printf("║                                                                                  ANÁLISE DE DESEMPENHO - ESTRUTURAS DE DADOS                                                                                  ║\n");
+    printf("║ANÁLISE DE DESEMPENHO - ESTRUTURAS DE DADOS║\n");
     printf("║                                                                                         %s                                                                                        ║\n",
            METODO_ORDENACAO == COUNTING_SORT ? "COUNTING SORT" : "RADIX SORT");
     printf("\n");
