@@ -1,9 +1,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Tamanho da entrada para leitura
-#define maxlinhas 25000000
-
 typedef enum
 {
     LISTA_LINEAR = 1,
@@ -28,14 +25,21 @@ typedef enum
     MOVIE_IDS = 1,
     RATINGS = 2
 } TipoDado;
-#define TIPO_DADO RATINGS // Escolha do tipo de dado a ser lido
 
-// Escolha da estrutura a ser testada
-#define ESTRUTURA_ATIVA LISTA_DINAMICA
-// Escolha do método de ordenação
-#define METODO_ORDENACAO RADIX_SORT
+//=================CONFIGURAÇÕES=================
+
+#define TIPO_DADO RATINGS // Escolha do tipo de dado a ser lido
 
 // CONFIGURAÇÕES DE ARQUIVO
 #define ARQUIVO_ENTRADA "datasets/ratings.csv"
+
+// Escolha da estrutura a ser testada
+#define ESTRUTURA_ATIVA LISTA_DINAMICA
+
+// Escolha do método de ordenação
+#define METODO_ORDENACAO RADIX_SORT
+
+// Tamanho da entrada para leitura
+#define maxlinhas 1000000
 
 #endif
