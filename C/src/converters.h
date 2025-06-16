@@ -1,6 +1,6 @@
 #ifndef CONVERTERS_H
 #define CONVERTERS_H
-
+#include <stdio.h>
 #include "data_structures.h"
 
 // ========== CONVERSÕES - ESTRUTURAS DINÂMICAS ==========

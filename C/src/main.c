@@ -23,16 +23,10 @@ typedef struct
     int ordenadoCorretamente;
 } ResultadoTeste;
 
-// Variáveis globais para tracking de memória
-static size_t memoriaAtual = 0;
-static size_t memoriaMaxima = 0;
-static size_t memoriaInicial = 0;
-
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
 
-// Função para obter uso de memória no Windows
 size_t getMemoryUsage()
 {
     PROCESS_MEMORY_COUNTERS_EX pmc;
@@ -46,7 +40,6 @@ size_t getMemoryUsage()
 #elif defined(__linux__)
 #include <unistd.h>
 
-// Função para obter uso de memória no Linux
 size_t getMemoryUsage()
 {
     FILE *file = fopen("/proc/self/status", "r");
@@ -64,67 +57,81 @@ size_t getMemoryUsage()
         }
     }
     fclose(file);
-    return vmrss * 1024; // Converter de KB para bytes
+    return vmrss * 1024;
 }
 
+#else
+// Fallback para outros sistemas - estimativa baseada em malloc
+static size_t total_allocated = 0;
+
+void *tracked_malloc(size_t size)
+{
+    void *ptr = malloc(size);
+    if (ptr)
+    {
+        total_allocated += size;
+    }
+    return ptr;
+}
+
+void tracked_free(void *ptr, size_t size)
+{
+    if (ptr)
+    {
+        free(ptr);
+        total_allocated -= size;
+    }
+}
+
+size_t getMemoryUsage()
+{
+    return total_allocated;
+}
 #endif
 
-// Função para resetar contadores de memória
-void resetMemoryTracking()
+// Função para estimar uso preciso de memória por tipo de estrutura
+size_t calculatePreciseMemoryUsage(TipoEstrutura tipo, int numElementos)
 {
-    memoriaAtual = 0;
-    memoriaMaxima = 0;
-    memoriaInicial = getMemoryUsage();
-}
-
-// Função para estimar uso de memória por tipo de estrutura
-size_t estimateMemoryUsage(TipoEstrutura tipo, int numElementos)
-{
-    size_t baseSize = 0;
+    size_t memoryUsage = 0;
 
     switch (tipo)
     {
     case LISTA_LINEAR:
-        // Array estático + estrutura de controle
-        baseSize = sizeof(int) * numElementos + sizeof(LinearList);
+        // Array de inteiros + estrutura LinearList
+        memoryUsage = (sizeof(int) * numElementos) + sizeof(LinearList);
         break;
+
     case LISTA_DINAMICA:
-        // Nós da lista ligada (cada nó tem dados + ponteiro)
-        baseSize = (sizeof(int) + sizeof(void *)) * numElementos + sizeof(LinkedList);
+        // Cada nó: sizeof(Node) que contém int + ponteiro
+        // Mais a estrutura LinkedList
+        memoryUsage = (sizeof(Node) * numElementos) + sizeof(LinkedList);
         break;
+
     case PILHA_LINEAR:
-        // Array estático + estrutura de controle
-        baseSize = sizeof(int) * numElementos + sizeof(LinearStack);
+        // Array de inteiros + estrutura LinearStack
+        memoryUsage = (sizeof(int) * numElementos) + sizeof(LinearStack);
         break;
+
     case PILHA_DINAMICA:
-        // Nós da pilha (cada nó tem dados + ponteiro)
-        baseSize = (sizeof(int) + sizeof(void *)) * numElementos + sizeof(Stack);
+        // Array de inteiros + estrutura Stack
+        memoryUsage = (sizeof(int) * numElementos) + sizeof(Stack);
         break;
+
     case FILA_LINEAR:
-        // Array circular + estrutura de controle
-        baseSize = sizeof(int) * numElementos + sizeof(LinearQueue);
+        // Array de inteiros + estrutura LinearQueue
+        memoryUsage = (sizeof(int) * numElementos) + sizeof(LinearQueue);
         break;
+
     case FILA_DINAMICA:
-        // Nós da fila (cada nó tem dados + ponteiro)
-        baseSize = (sizeof(int) + sizeof(void *)) * numElementos + sizeof(Queue);
+        // Array de inteiros + estrutura Queue
+        memoryUsage = (sizeof(int) * numElementos) + sizeof(Queue);
         break;
     }
 
-    // Adicionar overhead do array temporário para conversão/ordenação
-    baseSize += sizeof(int) * numElementos;
+    // Adicionar overhead do array temporário usado na conversão e ordenação
+    memoryUsage += sizeof(int) * numElementos;
 
-    return baseSize;
-}
-
-// Função para obter uso atual de memória
-size_t getCurrentMemoryUsage()
-{
-    size_t atual = getMemoryUsage();
-    if (atual > memoriaInicial)
-    {
-        return atual - memoriaInicial;
-    }
-    return 0;
+    return memoryUsage;
 }
 
 // Função para medir tempo de execução
@@ -161,14 +168,12 @@ ResultadoTeste testarEstrutura(TipoEstrutura tipo_estrutura, int maxLines)
     strcpy(resultado.nome, getNomeEstrutura(tipo_estrutura));
     resultado.ordenadoCorretamente = 0;
 
-    // Reset memory tracking e medir memória inicial
-    resetMemoryTracking();
-    size_t memoriaAntes = getMemoryUsage();
-
     void *estrutura = NULL;
     clock_t inicio, fim;
+    size_t memoriaAntes, memoriaDepois;
 
     // 1. LEITURA
+    memoriaAntes = getMemoryUsage();
     inicio = clock();
     int numElementos = lerDados_PorTipo(&estrutura, tipo_estrutura, TIPO_DADO, maxLines);
     fim = clock();
@@ -239,9 +244,6 @@ ResultadoTeste testarEstrutura(TipoEstrutura tipo_estrutura, int maxLines)
     fim = clock();
     resultado.tempoOrdenacao = measureExecutionTime(inicio, fim);
 
-    // Medir memória máxima durante processamento
-    size_t memoriaMaximaProcessamento = getMemoryUsage();
-
     // Verificar se está ordenado
     resultado.ordenadoCorretamente = isArraySorted(array, numElementos);
 
@@ -280,19 +282,24 @@ ResultadoTeste testarEstrutura(TipoEstrutura tipo_estrutura, int maxLines)
     fim = clock();
     resultado.tempoReconversao = measureExecutionTime(inicio, fim);
 
-    // Calcular tempo total e memória usada
+    // Medir memória após todas as operações
+    memoriaDepois = getMemoryUsage();
+
+    // Calcular tempo total
     resultado.tempoTotal = resultado.tempoLeitura + resultado.tempoConversao +
                            resultado.tempoOrdenacao + resultado.tempoReconversao;
 
-    // Calcular uso de memória (diferença entre máxima e inicial, ou estimativa)
-    if (memoriaMaximaProcessamento > memoriaAntes)
+    // Usar cálculo preciso de memória baseado no tipo de estrutura
+    resultado.memoriaUsada = calculatePreciseMemoryUsage(tipo_estrutura, numElementos);
+
+    // Para verificação, se a medição do sistema for muito diferente, usar a maior
+    if (memoriaDepois > memoriaAntes)
     {
-        resultado.memoriaUsada = memoriaMaximaProcessamento - memoriaAntes;
-    }
-    else
-    {
-        // Fallback: usar estimativa baseada no tipo de estrutura
-        resultado.memoriaUsada = estimateMemoryUsage(tipo_estrutura, numElementos);
+        size_t memoriaReal = memoriaDepois - memoriaAntes;
+        if (memoriaReal > resultado.memoriaUsada * 1.5) // Se for 50% maior que o esperado
+        {
+            resultado.memoriaUsada = memoriaReal;
+        }
     }
 
     // Limpar memória
@@ -427,19 +434,29 @@ void printSummaryStats(ResultadoTeste resultados[], int numResultados)
 
     printf("║ 📊 TEMPO MÉDIO:      %.6f s                                                                                                                                                                            ║\n", tempoMedio);
     printf("║ 📊 MEMÓRIA MÉDIA:    %s                                                                                                                                                                               ║\n", memMedia);
-    printf("\n");
+
+    // Adicionar análise de eficiência
+    printf("║                                                                                                                                                                                                         ║\n");
+    printf("║ 📈 ANÁLISE DE EFICIÊNCIA:                                                                                                                                                                               ║\n");
+    double speedupMelhor = resultados[piorTempo].tempoTotal / resultados[melhorTempo].tempoTotal;
+    double razaoMemoria = (double)resultados[piorMemoria].memoriaUsada / resultados[melhorMemoria].memoriaUsada;
+    printf("║    • Speedup melhor vs pior: %.2fx                                                                                                                                                                      ║\n", speedupMelhor);
+    printf("║    • Razão memória maior/menor: %.2fx                                                                                                                                                                   ║\n", razaoMemoria);
+    printf("╚═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
 }
 
 int main()
 {
     printf("\n");
-    printf("║ANÁLISE DE DESEMPENHO - ESTRUTURAS DE DADOS║\n");
+    printf("╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                                                                     ANÁLISE DE DESEMPENHO - ESTRUTURAS DE DADOS                                                                                      ║\n");
     printf("║                                                                                         %s                                                                                        ║\n",
            METODO_ORDENACAO == COUNTING_SORT ? "COUNTING SORT" : "RADIX SORT");
-    printf("\n");
+    printf("╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
 
     printf("📁 Arquivo: %s\n", ARQUIVO_ENTRADA);
     printf("📊 Máximo de linhas: %d\n", maxlinhas);
+    printf("💾 Tipo de dado: %s\n", TIPO_DADO == MOVIE_IDS ? "Movie IDs" : "Ratings");
     printf("🔄 Testando todas as estruturas de dados...\n");
 
     // Array para armazenar resultados

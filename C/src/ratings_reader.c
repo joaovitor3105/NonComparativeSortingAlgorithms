@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "ratings_reader.h"
 #include "data_structures.h"
 #include "config.h"
