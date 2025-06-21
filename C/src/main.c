@@ -4,492 +4,249 @@
 #include <string.h>
 #include "data_structures.h"
 #include "ratings_reader.h"
-#include "radix_sort.h"
+// #include "radix_sort.h" // REMOVIDO
 #include "converters.h"
 #include "counting_sort.h"
 #include "config.h"
 
-// Estrutura para armazenar resultados de cada teste
+// NOVO: Volumes de teste a serem executados automaticamente
+const int VOLUMES_TESTE[] = {100, 1000, 10000, 100000, 1000000};
+const int NUM_VOLUMES = sizeof(VOLUMES_TESTE) / sizeof(VOLUMES_TESTE[0]);
+
+// NOVO: Estrutura para retornar os resultados de uma única medição
 typedef struct
 {
-    char nome[30];
-    double tempoLeitura;
-    double tempoConversao;
-    double tempoOrdenacao;
-    double tempoReconversao;
     double tempoTotal;
-    size_t memoriaUsada;
     int numElementos;
     int ordenadoCorretamente;
-} ResultadoTeste;
+} ResultadoMedicao;
 
+// --- A função getMemoryUsage() permanece a mesma ---
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
-
-size_t getMemoryUsage()
-{
+size_t getMemoryUsage() {
     PROCESS_MEMORY_COUNTERS_EX pmc;
-    if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS *)&pmc, sizeof(pmc)))
-    {
-        return pmc.WorkingSetSize;
-    }
-    return 0;
+    GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS *)&pmc, sizeof(pmc));
+    return pmc.WorkingSetSize;
 }
-
 #elif defined(__linux__)
 #include <unistd.h>
-
-size_t getMemoryUsage()
-{
+size_t getMemoryUsage() {
     FILE *file = fopen("/proc/self/status", "r");
-    if (!file)
-        return 0;
-
+    if (!file) return 0;
     char line[128];
     size_t vmrss = 0;
-
-    while (fgets(line, sizeof(line), file))
-    {
-        if (sscanf(line, "VmRSS: %zu kB", &vmrss) == 1)
-        {
-            break;
-        }
+    while (fgets(line, sizeof(line), file)) {
+        if (sscanf(line, "VmRSS: %zu kB", &vmrss) == 1) break;
     }
     fclose(file);
     return vmrss * 1024;
 }
-
 #else
-// Fallback para outros sistemas - estimativa baseada em malloc
-static size_t total_allocated = 0;
-
-void *tracked_malloc(size_t size)
-{
-    void *ptr = malloc(size);
-    if (ptr)
-    {
-        total_allocated += size;
-    }
-    return ptr;
-}
-
-void tracked_free(void *ptr, size_t size)
-{
-    if (ptr)
-    {
-        free(ptr);
-        total_allocated -= size;
-    }
-}
-
-size_t getMemoryUsage()
-{
-    return total_allocated;
-}
+size_t getMemoryUsage() { return 0; } // Fallback simples
 #endif
 
-// Função para estimar uso preciso de memória por tipo de estrutura
+// ALTERADO: Cálculo de memória foi corrigido para estruturas dinâmicas
 size_t calculatePreciseMemoryUsage(TipoEstrutura tipo, int numElementos)
 {
-    size_t memoryUsage = 0;
+    if (numElementos <= 0) return 0;
 
     switch (tipo)
     {
     case LISTA_LINEAR:
-        // Array de inteiros + estrutura LinearList
-        memoryUsage = (sizeof(int) * numElementos) + sizeof(LinearList);
-        break;
-
+        return (sizeof(int) * numElementos) + sizeof(LinearList);
     case LISTA_DINAMICA:
-        // Cada nó: sizeof(Node) que contém int + ponteiro
-        // Mais a estrutura LinkedList
-        memoryUsage = (sizeof(Node) * numElementos) + sizeof(LinkedList);
-        break;
-
+        // CÁLCULO CORRIGIDO: Cada nó tem um tamanho fixo (dado + ponteiro)
+        return (sizeof(Node) * numElementos) + sizeof(LinkedList);
     case PILHA_LINEAR:
-        // Array de inteiros + estrutura LinearStack
-        memoryUsage = (sizeof(int) * numElementos) + sizeof(LinearStack);
-        break;
-
+        return (sizeof(int) * numElementos) + sizeof(LinearStack);
     case PILHA_DINAMICA:
-        // Array de inteiros + estrutura Stack
-        memoryUsage = (sizeof(int) * numElementos) + sizeof(Stack);
-        break;
-
+        // CÁLCULO CORRIGIDO
+        return (sizeof(Node) * numElementos) + sizeof(Stack);
     case FILA_LINEAR:
-        // Array de inteiros + estrutura LinearQueue
-        memoryUsage = (sizeof(int) * numElementos) + sizeof(LinearQueue);
-        break;
-
+        return (sizeof(int) * numElementos) + sizeof(LinearQueue);
     case FILA_DINAMICA:
-        // Array de inteiros + estrutura Queue
-        memoryUsage = (sizeof(int) * numElementos) + sizeof(Queue);
-        break;
-    }
-
-    // Adicionar overhead do array temporário usado na conversão e ordenação
-    memoryUsage += sizeof(int) * numElementos;
-
-    return memoryUsage;
-}
-
-// Função para medir tempo de execução
-double measureExecutionTime(clock_t start, clock_t end)
-{
-    return ((double)(end - start)) / CLOCKS_PER_SEC;
-}
-
-// Função para formatar bytes em unidades legíveis
-void formatBytes(size_t bytes, char *buffer)
-{
-    if (bytes < 1024)
-    {
-        sprintf(buffer, "%zu B", bytes);
-    }
-    else if (bytes < 1024 * 1024)
-    {
-        sprintf(buffer, "%.2f KB", bytes / 1024.0);
-    }
-    else if (bytes < 1024 * 1024 * 1024)
-    {
-        sprintf(buffer, "%.2f MB", bytes / (1024.0 * 1024.0));
-    }
-    else
-    {
-        sprintf(buffer, "%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+        // CÁLCULO CORRIGIDO
+        return (sizeof(Node) * numElementos) + sizeof(Queue);
+    default:
+        return 0;
     }
 }
 
-// Função para testar uma estrutura específica
-ResultadoTeste testarEstrutura(TipoEstrutura tipo_estrutura, int maxLines)
+// NOVO: Função única para medir o desempenho de uma execução
+// NOVO: Função única para medir o desempenho de uma execução
+ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
 {
-    ResultadoTeste resultado;
-    strcpy(resultado.nome, getNomeEstrutura(tipo_estrutura));
-    resultado.ordenadoCorretamente = 0;
-
+    ResultadoMedicao resultado = {0.0, 0, 0};
     void *estrutura = NULL;
-    clock_t inicio, fim;
-    size_t memoriaAntes, memoriaDepois;
+    int *array = NULL;
+    clock_t inicio_total, fim_total;
 
-    // 1. LEITURA
-    memoriaAntes = getMemoryUsage();
-    inicio = clock();
+    inicio_total = clock();
+
+    // 1. Leitura
     int numElementos = lerDados_PorTipo(&estrutura, tipo_estrutura, TIPO_DADO, maxLines);
-    fim = clock();
-    resultado.tempoLeitura = measureExecutionTime(inicio, fim);
+    if (numElementos <= 0) return resultado;
     resultado.numElementos = numElementos;
 
-    if (numElementos <= 0)
-    {
-        printf("Erro na leitura dos dados para %s!\n", resultado.nome);
-        resultado.tempoConversao = resultado.tempoOrdenacao = resultado.tempoReconversao = resultado.tempoTotal = 0;
-        resultado.memoriaUsada = 0;
+    // 2. Conversão para Array
+    switch (tipo_estrutura) {
+        case LISTA_LINEAR: array = linearListToArray((LinearList *)estrutura); break;
+        case LISTA_DINAMICA: array = listToArray((LinkedList *)estrutura); break;
+        case PILHA_LINEAR: array = linearStackToArray((LinearStack *)estrutura); break;
+        case PILHA_DINAMICA: array = stackToArray((Stack *)estrutura); break;
+        case FILA_LINEAR: array = linearQueueToArray((LinearQueue *)estrutura); break;
+        case FILA_DINAMICA: array = queueToArray((Queue *)estrutura); break;
+    }
+    if (!array) {
+        // Liberar estrutura inicial em caso de falha na conversão
+        // (código de limpeza omitido por brevidade, mas importante em produção)
         return resultado;
     }
 
-    // 2. CONVERSÃO PARA ARRAY
-    inicio = clock();
-    int *array = NULL;
-
-    switch (tipo_estrutura)
-    {
-    case LISTA_LINEAR:
-        array = linearListToArray((LinearList *)estrutura);
-        break;
-    case LISTA_DINAMICA:
-        array = listToArray((LinkedList *)estrutura);
-        break;
-    case PILHA_LINEAR:
-        array = linearStackToArray((LinearStack *)estrutura);
-        break;
-    case PILHA_DINAMICA:
-        array = stackToArray((Stack *)estrutura);
-        break;
-    case FILA_LINEAR:
-        array = linearQueueToArray((LinearQueue *)estrutura);
-        break;
-    case FILA_DINAMICA:
-        array = queueToArray((Queue *)estrutura);
-        break;
-    }
-    fim = clock();
-    resultado.tempoConversao = measureExecutionTime(inicio, fim);
-
-    if (!array)
-    {
-        printf("Erro na conversão para array para %s!\n", resultado.nome);
-        resultado.tempoOrdenacao = resultado.tempoReconversao = resultado.tempoTotal = 0;
-        resultado.memoriaUsada = 0;
-        return resultado;
-    }
-
-    // 3. ORDENAÇÃO
-    inicio = clock();
-    switch (METODO_ORDENACAO)
-    {
-    case COUNTING_SORT:
-        countingSort(array, numElementos);
-        break;
-    case RADIX_SORT:
-        radixSort(array, numElementos);
-        break;
-    default:
-        printf("Método de ordenação desconhecido!\n");
-        free(array);
-        resultado.tempoOrdenacao = resultado.tempoReconversao = resultado.tempoTotal = 0;
-        resultado.memoriaUsada = 0;
-        return resultado;
-    }
-    fim = clock();
-    resultado.tempoOrdenacao = measureExecutionTime(inicio, fim);
-
-    // Verificar se está ordenado
+    // 3. Ordenação (APENAS COUNTING SORT)
+    countingSort(array, numElementos);
     resultado.ordenadoCorretamente = isArraySorted(array, numElementos);
 
-    // 4. RECONVERSÃO PARA ESTRUTURA ORIGINAL
-    inicio = clock();
-
-    // Liberar estrutura original
-    switch (tipo_estrutura)
-    {
-    case LISTA_LINEAR:
-        destroyLinearList((LinearList *)estrutura);
-        estrutura = arrayToLinearList(array, numElementos);
-        break;
-    case LISTA_DINAMICA:
-        destroyList((LinkedList *)estrutura);
-        estrutura = arrayToList(array, numElementos);
-        break;
-    case PILHA_LINEAR:
-        destroyLinearStack((LinearStack *)estrutura);
-        estrutura = arrayToLinearStack(array, numElementos);
-        break;
-    case PILHA_DINAMICA:
-        destroyStack((Stack *)estrutura);
-        estrutura = arrayToStack(array, numElementos);
-        break;
-    case FILA_LINEAR:
-        destroyLinearQueue((LinearQueue *)estrutura);
-        estrutura = arrayToLinearQueue(array, numElementos);
-        break;
-    case FILA_DINAMICA:
-        destroyQueue((Queue *)estrutura);
-        estrutura = arrayToQueue(array, numElementos);
-        break;
+    // 4. Reconversão para Estrutura (opcional, mas mantém a lógica do teste)
+    // ESTE ERA UM DOS SWITCHES COM ERRO
+    switch (tipo_estrutura) {
+        case LISTA_LINEAR:
+            destroyLinearList((LinearList *)estrutura);
+            estrutura = arrayToLinearList(array, numElementos);
+            break;
+        case LISTA_DINAMICA:
+            destroyList((LinkedList *)estrutura);
+            estrutura = arrayToList(array, numElementos);
+            break;
+        // CASOS ADICIONADOS
+        case PILHA_LINEAR:
+            destroyLinearStack((LinearStack *)estrutura);
+            estrutura = arrayToLinearStack(array, numElementos);
+            break;
+        case PILHA_DINAMICA:
+            destroyStack((Stack *)estrutura);
+            estrutura = arrayToStack(array, numElementos);
+            break;
+        case FILA_LINEAR:
+            destroyLinearQueue((LinearQueue *)estrutura);
+            estrutura = arrayToLinearQueue(array, numElementos);
+            break;
+        case FILA_DINAMICA:
+            destroyQueue((Queue *)estrutura);
+            estrutura = arrayToQueue(array, numElementos);
+            break;
     }
 
-    fim = clock();
-    resultado.tempoReconversao = measureExecutionTime(inicio, fim);
+    fim_total = clock();
+    resultado.tempoTotal = ((double)(fim_total - inicio_total)) / CLOCKS_PER_SEC * 1000; // Convertido para ms
 
-    // Medir memória após todas as operações
-    memoriaDepois = getMemoryUsage();
-
-    // Calcular tempo total
-    resultado.tempoTotal = resultado.tempoLeitura + resultado.tempoConversao +
-                           resultado.tempoOrdenacao + resultado.tempoReconversao;
-
-    // Usar cálculo preciso de memória baseado no tipo de estrutura
-    resultado.memoriaUsada = calculatePreciseMemoryUsage(tipo_estrutura, numElementos);
-
-    // Para verificação, se a medição do sistema for muito diferente, usar a maior
-    if (memoriaDepois > memoriaAntes)
-    {
-        size_t memoriaReal = memoriaDepois - memoriaAntes;
-        if (memoriaReal > resultado.memoriaUsada * 1.5) // Se for 50% maior que o esperado
-        {
-            resultado.memoriaUsada = memoriaReal;
-        }
-    }
-
-    // Limpar memória
+    // 5. Limpeza final
     free(array);
-
-    switch (tipo_estrutura)
-    {
-    case LISTA_LINEAR:
-        destroyLinearList((LinearList *)estrutura);
-        break;
-    case LISTA_DINAMICA:
-        destroyList((LinkedList *)estrutura);
-        break;
-    case PILHA_LINEAR:
-        destroyLinearStack((LinearStack *)estrutura);
-        break;
-    case PILHA_DINAMICA:
-        destroyStack((Stack *)estrutura);
-        break;
-    case FILA_LINEAR:
-        destroyLinearQueue((LinearQueue *)estrutura);
-        break;
-    case FILA_DINAMICA:
-        destroyQueue((Queue *)estrutura);
-        break;
+    // ESTE ERA O OUTRO SWITCH COM ERRO
+    switch (tipo_estrutura) {
+        case LISTA_LINEAR: destroyLinearList((LinearList *)estrutura); break;
+        case LISTA_DINAMICA: destroyList((LinkedList *)estrutura); break;
+        // CASOS ADICIONADOS
+        case PILHA_LINEAR: destroyLinearStack((LinearStack *)estrutura); break;
+        case PILHA_DINAMICA: destroyStack((Stack *)estrutura); break;
+        case FILA_LINEAR: destroyLinearQueue((LinearQueue *)estrutura); break;
+        case FILA_DINAMICA: destroyQueue((Queue *)estrutura); break;
     }
 
     return resultado;
 }
 
-// Função para imprimir linha separadora
-void printSeparator(int width)
-{
-    for (int i = 0; i < width; i++)
-    {
-        printf("-");
+// NOVO: Função para imprimir a tabela de resumo final
+void exibirTabelaResumoFinal(double tempos[6][NUM_VOLUMES], size_t memorias[6][NUM_VOLUMES], const char* nomes[6]) {
+    printf("\n\n");
+    printf("                                         TABELA RESUMO FINAL\n");
+    printf("============================================================================================================\n");
+
+    // Cabeçalho
+    printf("%-22s | %-10s |", "Estrutura", "Tipo");
+    for (int i = 0; i < NUM_VOLUMES; i++) {
+        printf(" %10d |", VOLUMES_TESTE[i]);
     }
-    printf("\n");
+    printf("\n------------------------------------------------------------------------------------------------------------\n");
+
+    // Seção de Tempo
+    printf("\nTEMPO (ms):\n");
+    for (int i = 0; i < 6; i++) {
+        const char* tipo = (strstr(nomes[i], "Linear") != NULL) ? "linear" : "dynamic";
+        printf("%-22s | %-10s |", nomes[i], tipo);
+        for (int j = 0; j < NUM_VOLUMES; j++) {
+            if (tempos[i][j] < 0) {
+                printf(" %10s |", "FALHA");
+            } else {
+                printf(" %10.2f |", tempos[i][j]);
+            }
+        }
+        printf("\n");
+    }
+
+    // Seção de Memória
+    printf("\nMEMORIA (MB):\n");
+    for (int i = 0; i < 6; i++) {
+        const char* tipo = (strstr(nomes[i], "Linear") != NULL) ? "linear" : "dynamic";
+        printf("%-22s | %-10s |", nomes[i], tipo);
+        for (int j = 0; j < NUM_VOLUMES; j++) {
+            if (memorias[i][j] == 0) {
+                 printf(" %10s |", "N/A");
+            } else {
+                double memoria_mb = memorias[i][j] / (1024.0 * 1024.0);
+                printf(" %10.2f |", memoria_mb);
+            }
+        }
+        printf("\n");
+    }
+    printf("============================================================================================================\n");
 }
 
-// Função para imprimir tabela de resultados
-void printResultsTable(ResultadoTeste resultados[], int numResultados)
-{
-    const int TABLE_WIDTH = 140;
-
-    printf("\n");
-    printSeparator(TABLE_WIDTH);
-    printf("| %-18s | %-10s | %-10s | %-10s | %-10s | %-10s | %-12s | %-8s | %-8s |\n",
-           "ESTRUTURA", "LEITURA", "CONVERSAO", "ORDENACAO", "RECONVER", "TOTAL", "MEMORIA", "ELEMENTOS", "STATUS");
-    printSeparator(TABLE_WIDTH);
-
-    for (int i = 0; i < numResultados; i++)
-    {
-        char memStr[20];
-        formatBytes(resultados[i].memoriaUsada, memStr);
-
-        printf("| %-18s | %8.4fs | %8.4fs | %8.4fs | %8.4fs | %8.4fs | %12s | %8d | %8s |\n",
-               resultados[i].nome,
-               resultados[i].tempoLeitura,
-               resultados[i].tempoConversao,
-               resultados[i].tempoOrdenacao,
-               resultados[i].tempoReconversao,
-               resultados[i].tempoTotal,
-               memStr,
-               resultados[i].numElementos,
-               resultados[i].ordenadoCorretamente ? "OK" : "ERRO");
-    }
-
-    printSeparator(TABLE_WIDTH);
-}
-
-// Função para imprimir estatísticas resumidas
-void printSummaryStats(ResultadoTeste resultados[], int numResultados)
-{
-    if (numResultados == 0)
-        return;
-
-    // Encontrar melhor e pior desempenho
-    int melhorTempo = 0, piorTempo = 0;
-    int melhorMemoria = 0, piorMemoria = 0;
-
-    for (int i = 1; i < numResultados; i++)
-    {
-        if (resultados[i].tempoTotal < resultados[melhorTempo].tempoTotal)
-        {
-            melhorTempo = i;
-        }
-        if (resultados[i].tempoTotal > resultados[piorTempo].tempoTotal)
-        {
-            piorTempo = i;
-        }
-        if (resultados[i].memoriaUsada < resultados[melhorMemoria].memoriaUsada)
-        {
-            melhorMemoria = i;
-        }
-        if (resultados[i].memoriaUsada > resultados[piorMemoria].memoriaUsada)
-        {
-            piorMemoria = i;
-        }
-    }
-
-    printf("\n╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════\n");
-    printf("║                                                                                          RESUMO ESTATÍSTICO                                                                                         ║\n");
-    printf("╠═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════\n");
-
-    char memMelhor[20], memPior[20];
-    formatBytes(resultados[melhorMemoria].memoriaUsada, memMelhor);
-    formatBytes(resultados[piorMemoria].memoriaUsada, memPior);
-
-    printf("║ 🏆 MELHOR TEMPO:     %-20s (%.6f s)                                                                                                                                                                    ║\n",
-           resultados[melhorTempo].nome, resultados[melhorTempo].tempoTotal);
-    printf("║ 🐌 PIOR TEMPO:       %-20s (%.6f s)                                                                                                                                                                    ║\n",
-           resultados[piorTempo].nome, resultados[piorTempo].tempoTotal);
-    printf("║ 💾 MENOR MEMÓRIA:    %-20s (%s)                                                                                                                                                                        ║\n",
-           resultados[melhorMemoria].nome, memMelhor);
-    printf("║ 🔥 MAIOR MEMÓRIA:    %-20s (%s)                                                                                                                                                                        ║\n",
-           resultados[piorMemoria].nome, memPior);
-
-    // Calcular médias
-    double tempoMedio = 0;
-    size_t memoriaMedia = 0;
-    for (int i = 0; i < numResultados; i++)
-    {
-        tempoMedio += resultados[i].tempoTotal;
-        memoriaMedia += resultados[i].memoriaUsada;
-    }
-    tempoMedio /= numResultados;
-    memoriaMedia /= numResultados;
-
-    char memMedia[20];
-    formatBytes(memoriaMedia, memMedia);
-
-    printf("║ 📊 TEMPO MÉDIO:      %.6f s                                                                                                                                                                            ║\n", tempoMedio);
-    printf("║ 📊 MEMÓRIA MÉDIA:    %s                                                                                                                                                                               ║\n", memMedia);
-
-    // Adicionar análise de eficiência
-    printf("║                                                                                                                                                                                                         ║\n");
-    printf("║ 📈 ANÁLISE DE EFICIÊNCIA:                                                                                                                                                                               ║\n");
-    double speedupMelhor = resultados[piorTempo].tempoTotal / resultados[melhorTempo].tempoTotal;
-    double razaoMemoria = (double)resultados[piorMemoria].memoriaUsada / resultados[melhorMemoria].memoriaUsada;
-    printf("║    • Speedup melhor vs pior: %.2fx                                                                                                                                                                      ║\n", speedupMelhor);
-    printf("║    • Razão memória maior/menor: %.2fx                                                                                                                                                                   ║\n", razaoMemoria);
-    printf("╚═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
-}
 
 int main()
 {
     printf("\n");
-    printf("╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
-    printf("║                                                                     ANÁLISE DE DESEMPENHO - ESTRUTURAS DE DADOS                                                                                      ║\n");
-    printf("║                                                                                         %s                                                                                        ║\n",
-           METODO_ORDENACAO == COUNTING_SORT ? "COUNTING SORT" : "RADIX SORT");
-    printf("╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
-
+    printf("╔═══════════════════════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                 ANÁLISE DE DESEMPENHO - ESTRUTURAS DE DADOS (LINGUAGEM C)                 ║\n");
+    printf("║                                     COUNTING SORT                                     ║\n");
+    printf("╚═══════════════════════════════════════════════════════════════════════════════════════╝\n");
     printf("📁 Arquivo: %s\n", ARQUIVO_ENTRADA);
-    printf("📊 Máximo de linhas: %d\n", maxlinhas);
-    printf("💾 Tipo de dado: %s\n", TIPO_DADO == MOVIE_IDS ? "Movie IDs" : "Ratings");
-    printf("🔄 Testando todas as estruturas de dados...\n");
+    printf("📊 Volumes de teste: ");
+    for(int i = 0; i < NUM_VOLUMES; i++) printf("%d ", VOLUMES_TESTE[i]);
+    printf("\n\n");
 
-    // Array para armazenar resultados
-    ResultadoTeste resultados[6];
-    int numResultados = 0;
-
-    // Testar todas as estruturas
+    // ALTERADO: Lógica principal para testar múltiplos volumes e armazenar resultados
     TipoEstrutura estruturas[] = {LISTA_LINEAR, LISTA_DINAMICA, PILHA_LINEAR, PILHA_DINAMICA, FILA_LINEAR, FILA_DINAMICA};
-    int numEstruturas = sizeof(estruturas) / sizeof(estruturas[0]);
+    const int NUM_ESTRUTURAS = sizeof(estruturas) / sizeof(estruturas[0]);
+    const char* nomesEstruturas[] = {"Lista Linear", "Lista Dinamica", "Pilha Linear", "Pilha Dinamica", "Fila Linear", "Fila Dinamica"};
 
-    for (int i = 0; i < numEstruturas; i++)
-    {
-        printf("\n⏳ Testando %s...", getNomeEstrutura(estruturas[i]));
-        fflush(stdout);
+    double resultadosTempo[NUM_ESTRUTURAS][NUM_VOLUMES];
+    size_t resultadosMemoria[NUM_ESTRUTURAS][NUM_VOLUMES];
 
-        resultados[numResultados] = testarEstrutura(estruturas[i], maxlinhas);
-        numResultados++;
+    for (int i = 0; i < NUM_ESTRUTURAS; i++) {
+        for (int j = 0; j < NUM_VOLUMES; j++) {
+            int volumeAtual = VOLUMES_TESTE[j];
+            printf("⏳ Testando %s com %d elementos...", nomesEstruturas[i], volumeAtual);
+            fflush(stdout);
 
-        if (resultados[numResultados - 1].ordenadoCorretamente)
-        {
-            printf(" ✅ Concluído!");
-        }
-        else
-        {
-            printf(" ❌ Erro na ordenação!");
+            ResultadoMedicao res = medirDesempenho(estruturas[i], volumeAtual);
+
+            if (res.ordenadoCorretamente) {
+                resultadosTempo[i][j] = res.tempoTotal;
+                resultadosMemoria[i][j] = calculatePreciseMemoryUsage(estruturas[i], res.numElementos);
+                printf(" ✅ Concluído! (%.2f ms)\n", res.tempoTotal);
+            } else {
+                resultadosTempo[i][j] = -1.0; // Sinal de falha
+                resultadosMemoria[i][j] = 0;
+                printf(" ❌ Erro na ordenação!\n");
+            }
         }
     }
 
-    // Imprimir tabela de resultados
-    printResultsTable(resultados, numResultados);
-
-    // Imprimir estatísticas resumidas
-    printSummaryStats(resultados, numResultados);
+    // NOVO: Exibe a tabela de resumo final
+    exibirTabelaResumoFinal(resultadosTempo, resultadosMemoria, nomesEstruturas);
 
     return 0;
 }

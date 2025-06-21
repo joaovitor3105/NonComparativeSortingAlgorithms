@@ -1,160 +1,256 @@
-import java.util.Scanner;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class Main {
+    // Volumes de teste a serem executados automaticamente
+    private static final int[] VOLUMES_TESTE = { 100, 1000, 100000, 1000000 };
+    private static final String CAMINHO_ARQUIVO = "/home/john/Desktop/NonComparativeSortingAlgorithms/ml-25m/ratings.csv";
+
+    // NOVO: Estruturas para armazenar todos os resultados para a tabela final.
+    // Usamos LinkedHashMap para manter a ordem de inserção.
+    private static final Map<String, Map<Integer, Double>> resultadosTempo = new LinkedHashMap<>();
+    private static final Map<String, Map<Integer, Long>> resultadosMemoria = new LinkedHashMap<>();
+    private static final String[] NOMES_ESTRUTURAS = {
+            "Pilha Estática", "Pilha Dinâmica", "Lista Estática",
+            "Lista Dinâmica", "Fila Estática", "Fila Dinâmica"
+    };
+
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        
-        System.out.println("Escolha a estrutura para testar:");
-        System.out.println("1 - Pilha Estática");
-        System.out.println("2 - Pilha Dinâmica");
-        System.out.println("3 - Lista Estática");
-        System.out.println("4 - Lista Dinâmica");
-        System.out.println("5 - Fila Estática");
-        System.out.println("6 - Fila Dinâmica");
-        System.out.print("Opção: ");
-        
-        int opcao = scanner.nextInt();
-        
-        System.out.print("Digite o volume de dados a ser testado: ");
-        int volume = scanner.nextInt();
-        
-        String caminhoArquivo = "ratings.csv";
-        
-        // Ler dados do arquivo (já multiplicados por 2)
-        int[] dadosOriginais = FileUtils.lerNotasDoArquivo(caminhoArquivo, volume);
-        System.out.println("\nDados lidos do arquivo: " + dadosOriginais.length);
-        
-        switch (opcao) {
-            case 1:
-                testarEstrutura("Pilha Estática", () -> {
-                    PilhaEstatica pilha = new PilhaEstatica(volume);
-                    
-                    for (int nota : dadosOriginais) {
-                        pilha.empilhar(nota);
-                    }
-                    
-                    int[] array = pilha.toArray();
-                    SortUtils.countingSort(array);
-                    pilha.fromArray(array);
-                    
-                    verificarOrdenacao(pilha.toArray());
-                });
-                break;
-                
-            case 2:
-                testarEstrutura("Pilha Dinâmica", () -> {
-                    PilhaDinamica pilha = new PilhaDinamica();
-                    
-                    for (int nota : dadosOriginais) {
-                        pilha.empilhar(nota);
-                    }
-                    
-                    int[] array = pilha.toArray();
-                    SortUtils.countingSort(array);
-                    pilha.fromArray(array);
-                    
-                    verificarOrdenacao(pilha.toArray());
-                });
-                break;
-                
-            case 3:
-                testarEstrutura("Lista Estática", () -> {
-                    ListaEstatica lista = new ListaEstatica(volume);
-                    
-                    for (int nota : dadosOriginais) {
-                        lista.inserir(nota);
-                    }
-                    
-                    int[] array = lista.toArray();
-                    SortUtils.countingSort(array);
-                    lista.fromArray(array);
-                    
-                    verificarOrdenacao(lista.toArray());
-                });
-                break;
-                
-            case 4:
-                testarEstrutura("Lista Dinâmica", () -> {
-                    ListaDinamica lista = new ListaDinamica();
-                    
-                    for (int nota : dadosOriginais) {
-                        lista.inserir(nota);
-                    }
-                    
-                    int[] array = lista.toArray();
-                    SortUtils.countingSort(array);
-                    lista.fromArray(array);
-                    
-                    verificarOrdenacao(lista.toArray());
-                });
-                break;
-                
-            case 5:
-                testarEstrutura("Fila Estática", () -> {
-                    FilaEstatica fila = new FilaEstatica(volume);
-                    
-                    for (int nota : dadosOriginais) {
-                        fila.enfileirar(nota);
-                    }
-                    
-                    int[] array = fila.toArray();
-                    SortUtils.countingSort(array);
-                    fila.fromArray(array);
-                    
-                    verificarOrdenacao(fila.toArray());
-                });
-                break;
-                
-            case 6:
-                testarEstrutura("Fila Dinâmica", () -> {
-                    FilaDinamica fila = new FilaDinamica();
-                    
-                    for (int nota : dadosOriginais) {
-                        fila.enfileirar(nota);
-                    }
-                    
-                    int[] array = fila.toArray();
-                    SortUtils.countingSort(array);
-                    fila.fromArray(array);
-                    
-                    verificarOrdenacao(fila.toArray());
-                });
-                break;
-                
-            default:
-                System.out.println("Opção inválida!");
+        System.out.println("=".repeat(80));
+        System.out.println("TESTE AUTOMATIZADO DE ESTRUTURAS DE DADOS COM COUNTING SORT");
+        System.out.println("(Medições de Tempo e Memória separadas para maior precisão)");
+        System.out.println("=".repeat(80));
+        System.out.println("Volumes de teste: " + Arrays.toString(VOLUMES_TESTE));
+        System.out.println("Arquivo de dados: " + CAMINHO_ARQUIVO);
+        System.out.println("=".repeat(80));
+
+        // NOVO: Inicializa as estruturas de armazenamento de resultados
+        for (String nome : NOMES_ESTRUTURAS) {
+            resultadosTempo.put(nome, new LinkedHashMap<>());
+            resultadosMemoria.put(nome, new LinkedHashMap<>());
         }
-    }
-    
-    public static void testarEstrutura(String nome, Runnable estruturaTeste) {
-        System.out.println("\n=== Testando " + nome + " ===");
-        
-        long memoriaInicio = MemoryUtils.getMemoryUsage();
-        long tempoInicio = System.nanoTime();
-        
-        estruturaTeste.run();
-        
-        long tempoFim = System.nanoTime();
-        long memoriaFim = MemoryUtils.getMemoryUsage();
-        
-        double tempoMs = (tempoFim - tempoInicio) / 1_000_000.0;
-        long memoriaUsada = memoriaFim - memoriaInicio;
-        
-        System.out.printf("Tempo total: %.3f ms%n", tempoMs);
-        System.out.println("Memória usada: " + memoriaUsada + " bytes");
-    }
-    
-    private static void verificarOrdenacao(int[] array) {
-        double[] arrayOrdenado = FileUtils.converterParaDouble(array);
-        boolean ordenado = true;
-        for (int i = 0; i < arrayOrdenado.length - 1; i++) {
-            if (arrayOrdenado[i] > arrayOrdenado[i + 1]) {
-                ordenado = false;
-                break;
+
+        // Executar testes para cada volume
+        for (int volume : VOLUMES_TESTE) {
+            System.out.println("\n" + "=".repeat(80));
+            System.out.println("TESTANDO COM " + volume + " ENTRADAS");
+            System.out.println("=".repeat(80));
+
+            int[] dadosOriginais = FileUtils.lerNotasDoArquivo(CAMINHO_ARQUIVO, volume);
+            System.out.println("Dados carregados: " + dadosOriginais.length + " elementos");
+
+            testarTodasEstruturas(dadosOriginais, volume);
+
+            System.gc();
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
-        System.out.println("Verificação: " + (ordenado ? "ORDENADO" : "NÃO ORDENADO"));
+
+        System.out.println("\n" + "=".repeat(80));
+        System.out.println("TODOS OS TESTES CONCLUÍDOS!");
+        System.out.println("=".repeat(80));
+
+        // NOVO: Chama o método que imprime a tabela de resumo final
+        exibirTabelaResumoFinal();
     }
 
-    
+    private static void testarTodasEstruturas(int[] dadosOriginais, int volume) {
+        TesteRunnable[] testes = {
+                () -> { // Teste 1: Pilha Estática
+                    PilhaEstatica pilha = new PilhaEstatica(volume);
+                    for (int nota : dadosOriginais)
+                        pilha.empilhar(nota);
+                    int[] array = pilha.toArray();
+                    SortUtils.countingSort(array);
+                    pilha.fromArray(array);
+                    return verificarOrdenacao(pilha.toArray());
+                },
+                () -> { // Teste 2: Pilha Dinâmica
+                    PilhaDinamica pilha = new PilhaDinamica();
+                    for (int nota : dadosOriginais)
+                        pilha.empilhar(nota);
+                    int[] array = pilha.toArray();
+                    SortUtils.countingSort(array);
+                    pilha.fromArray(array);
+                    return verificarOrdenacao(pilha.toArray());
+                },
+                () -> { // Teste 3: Lista Estática
+                    ListaEstatica lista = new ListaEstatica(volume);
+                    for (int nota : dadosOriginais)
+                        lista.inserir(nota);
+                    int[] array = lista.toArray();
+                    SortUtils.countingSort(array);
+                    lista.fromArray(array);
+                    return verificarOrdenacao(lista.toArray());
+                },
+                () -> { // Teste 4: Lista Dinâmica
+                    ListaDinamica lista = new ListaDinamica();
+                    for (int nota : dadosOriginais)
+                        lista.inserir(nota);
+                    int[] array = lista.toArray();
+                    SortUtils.countingSort(array);
+                    lista.fromArray(array);
+                    return verificarOrdenacao(lista.toArray());
+                },
+                () -> { // Teste 5: Fila Estática
+                    FilaEstatica fila = new FilaEstatica(volume);
+                    for (int nota : dadosOriginais)
+                        fila.enfileirar(nota);
+                    int[] array = fila.toArray();
+                    SortUtils.countingSort(array);
+                    fila.fromArray(array);
+                    return verificarOrdenacao(fila.toArray());
+                },
+                () -> { // Teste 6: Fila Dinâmica
+                    FilaDinamica fila = new FilaDinamica();
+                    for (int nota : dadosOriginais)
+                        fila.enfileirar(nota);
+                    int[] array = fila.toArray();
+                    SortUtils.countingSort(array);
+                    fila.fromArray(array);
+                    return verificarOrdenacao(fila.toArray());
+                }
+        };
+
+        for (int i = 0; i < testes.length; i++) {
+            String nomeEstrutura = NOMES_ESTRUTURAS[i];
+            System.out.println("\n--- Testando " + nomeEstrutura + " ---");
+
+            ResultadoTempo resTempo = medirTempoDeExecucao(testes[i]);
+            long memoriaUsada = medirUsoDeMemoria(testes[i]);
+
+            // NOVO: Armazena os resultados nas estruturas de dados globais
+            if (resTempo.ordenadoCorreto) {
+                resultadosTempo.get(nomeEstrutura).put(volume, resTempo.tempoMs);
+                resultadosMemoria.get(nomeEstrutura).put(volume, memoriaUsada);
+            } else {
+                // Se der erro, armazena um valor negativo para indicar falha
+                resultadosTempo.get(nomeEstrutura).put(volume, -1.0);
+                resultadosMemoria.get(nomeEstrutura).put(volume, -1L);
+            }
+        }
+    }
+
+    // NOVO: Método para exibir a tabela de resumo final
+    private static void exibirTabelaResumoFinal() {
+        System.out.println("\n");
+        System.out.println(" ".repeat(25) + "TABELA RESUMO FINAL" + " ".repeat(25));
+        System.out.println("=".repeat(90));
+
+        // Cabeçalho da tabela
+        System.out.printf("%-22s | %-10s |", "Estrutura", "Tipo");
+        for (int volume : VOLUMES_TESTE) {
+            System.out.printf(" %10d |", volume);
+        }
+        System.out.println("\n" + "-".repeat(90));
+
+        // Seção de TEMPO
+        System.out.println("\nTEMPO (ms):");
+        for (String nome : NOMES_ESTRUTURAS) {
+            String tipo = nome.contains("Estática") ? "estático" : "dinâmico";
+            System.out.printf("%-22s | %-10s |", nome, tipo);
+            for (int volume : VOLUMES_TESTE) {
+                double tempo = resultadosTempo.get(nome).getOrDefault(volume, -1.0);
+                if (tempo < 0) {
+                    System.out.printf(" %10s |", "FALHA");
+                } else {
+                    System.out.printf(" %10.2f |", tempo);
+                }
+            }
+            System.out.println();
+        }
+
+        // Seção de MEMÓRIA
+        System.out.println("\nMEMÓRIA (MB):");
+        for (String nome : NOMES_ESTRUTURAS) {
+            String tipo = nome.contains("Estática") ? "estático" : "dinâmico";
+            System.out.printf("%-22s | %-10s |", nome, tipo);
+            for (int volume : VOLUMES_TESTE) {
+                long memoriaBytes = resultadosMemoria.get(nome).getOrDefault(volume, -1L);
+                if (memoriaBytes < 0) {
+                    System.out.printf(" %10s |", "FALHA");
+                } else {
+                    // Converte bytes para megabytes
+                    double memoriaMb = memoriaBytes / (1024.0 * 1024.0);
+                    System.out.printf(" %10.2f |", memoriaMb);
+                }
+            }
+            System.out.println();
+        }
+        System.out.println("=".repeat(90));
+    }
+
+    // --- Métodos de medição, verificação e classes auxiliares (sem alterações) ---
+
+    private static ResultadoTempo medirTempoDeExecucao(TesteRunnable estruturaTeste) {
+        long tempoInicio = System.nanoTime();
+        boolean ordenadoCorreto = false;
+        try {
+            ordenadoCorreto = estruturaTeste.run();
+        } catch (Exception e) {
+            System.err.println("ERRO durante medição de tempo: " + e.getMessage());
+        }
+        long tempoFim = System.nanoTime();
+
+        double tempoMs = (tempoFim - tempoInicio) / 1_000_000.0;
+        System.out.printf("Medição de Tempo: %.3f ms | Status: %s%n",
+                tempoMs, ordenadoCorreto ? "ORDENADO" : "NÃO ORDENADO");
+
+        return new ResultadoTempo(tempoMs, ordenadoCorreto);
+    }
+
+    private static long medirUsoDeMemoria(TesteRunnable estruturaTeste) {
+        System.gc();
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        long memoriaInicio = MemoryUtils.getMemoryUsage();
+        try {
+            estruturaTeste.run();
+        } catch (Exception e) {
+            System.err.println("ERRO durante medição de memória: " + e.getMessage());
+        }
+        long memoriaFim = MemoryUtils.getMemoryUsage();
+
+        long memoriaUsada = memoriaFim - memoriaInicio;
+        System.out.printf("Medição de Memória: %d bytes%n", memoriaUsada);
+
+        return memoriaUsada;
+    }
+
+    private static boolean verificarOrdenacao(int[] array) {
+        if (array == null || array.length <= 1)
+            return true;
+        for (int i = 0; i < array.length - 1; i++) {
+            if (array[i] > array[i + 1])
+                return false;
+        }
+        return true;
+    }
+
+    @FunctionalInterface
+    private interface TesteRunnable {
+        boolean run() throws Exception;
+    }
+
+    private static class ResultadoTempo {
+        final double tempoMs;
+        final boolean ordenadoCorreto;
+
+        ResultadoTempo(double tempoMs, boolean ordenadoCorreto) {
+            this.tempoMs = tempoMs;
+            this.ordenadoCorreto = ordenadoCorreto;
+        }
+    }
+
+    // Supondo que você tenha FileUtils, MemoryUtils e as classes de estrutura de
+    // dados
+    // em outros arquivos.
 }

@@ -4,16 +4,17 @@ import gc
 import sys
 import platform
 import psutil
+import tracemalloc  
 from datetime import datetime
-from typing import List, Dict, Callable, Tuple
-from dataclasses import dataclass, field
+from typing import List, Dict, Callable
+from dataclasses import dataclass
 
 # Adicionar diretórios ao path
 sys.path.append('.')
 
 # Importar módulos do projeto
 from algorithms.counting_sort import counting_sort
-from algorithms.radix_sort import radix_sort
+# from algorithms.radix_sort import radix_sort  # REMOVIDO
 from structures.list_linear import ListLinear
 from structures.list_dynamic import ListDynamic
 from structures.queue_linear import QueueLinear
@@ -24,384 +25,198 @@ from utils.csv_reader import load_ratings_csv, generate_test_data
 from utils.data_structure import DataStructure
 
 
-NUM_EXECUTIONS = 10
+# --- Estruturas de Dados e Funções de Medição Refatoradas ---
 
-
-@dataclass
-class BenchmarkRun:
-    """Resultado de uma execução individual"""
-    execution_number: int
-    time_ns: int
-    time_micros: float
-    time_ms: float
-    memory_used_kb: float
-    memory_used_mb: float
-
-
+# ALTERADO: dataclass simplificado para um único resultado
 @dataclass
 class BenchmarkResult:
-    """Resultado completo de benchmark para uma estrutura"""
+    """Resultado de um único benchmark para uma estrutura e tamanho."""
     structure_name: str
     structure_type: str
-    algorithm: str
     data_size: int
-    runs: List[BenchmarkRun] = field(default_factory=list)
-    avg_time_ms: float = 0.0
-    avg_memory_mb: float = 0.0
-    min_time_ms: float = 0.0
-    max_time_ms: float = 0.0
-    min_memory_mb: float = 0.0
-    max_memory_mb: float = 0.0
+    time_ms: float
+    memory_mb: float
 
+# REMOVIDO: A classe BenchmarkRun não é mais necessária
 
-@dataclass
-class SystemInfo:
-    """Informações do sistema"""
-    timestamp: str
-    os: str
-    arch: str
-    cpus: int
-    python_version: str
-    total_mem_gb: float
-
-
-def get_memory_usage() -> float:
-    """Retorna o uso de memória atual em bytes"""
-    process = psutil.Process()
-    return process.memory_info().rss
-
+def get_memory_usage_bytes() -> float:
+    """Retorna o uso de memória atual em bytes."""
+    return psutil.Process().memory_info().rss
 
 def force_gc():
-    """Força coleta de lixo"""
-    gc.collect()
+    """Força coleta de lixo para estabilizar a medição de memória."""
     gc.collect()
     time.sleep(0.1)
 
+# NOVO: Função para medir APENAS o tempo de execução
+def medir_tempo(ds: DataStructure, data: List[int]) -> float:
+    """Executa o ciclo completo de ordenação e retorna o tempo em milissegundos."""
+    start_time = time.perf_counter()
 
-def run_single_benchmark(ds: DataStructure, data: List[int], algorithm: str) -> Tuple[int, float]:
-    """Executa um único teste de benchmark"""
-    force_gc()
-    
-    mem_before = get_memory_usage()
-    start_time = time.perf_counter_ns()
-    
-    # Processo de ordenação
     ds.from_array(data)
     arr = ds.to_array()
-    
-    if algorithm == "counting":
-        sorted_arr = counting_sort(arr)
-    else:  # radix
-        sorted_arr = radix_sort(arr)
-    
+    sorted_arr = counting_sort(arr)
     ds.from_array(sorted_arr)
+
+    end_time = time.perf_counter()
+    return (end_time - start_time) * 1000  # Converte para milissegundos
+
+# NOVO: Função para medir a memória usando tracemalloc
+def medir_memoria(ds: DataStructure, data: List[int]) -> float:
+    """Executa o ciclo completo de ordenação e retorna o PICO de memória usada em bytes."""
     
-    end_time = time.perf_counter_ns()
-    mem_after = get_memory_usage()
+    tracemalloc.start() # Inicia o monitoramento
+
+    # Limpa a estrutura para garantir que a medição seja apenas da execução atual
+    ds.from_array([]) 
     
-    time_ns = end_time - start_time
-    memory_bytes = max(0, mem_after - mem_before)
+    # --- Executa a mesma lógica da medição de tempo ---
+    ds.from_array(data)
+    arr = ds.to_array()
+    sorted_arr = counting_sort(arr)
+    ds.from_array(sorted_arr)
+    # --- Fim da lógica ---
+
+    # Captura o uso de memória atual e o pico
+    current, peak = tracemalloc.get_traced_memory()
     
-    return time_ns, memory_bytes
+    tracemalloc.stop() # Para o monitoramento
+    
+    # Limpa a estrutura para não impactar a próxima medição
+    ds.from_array([])
+    gc.collect()
+
+    return peak # Retorna o PICO de memória alocada durante o bloco
 
 
-def benchmark_structure(
-    struct_name: str, 
-    struct_type: str,
-    create_structure: Callable[[int], DataStructure],
-    data: List[int],
-    algorithm: str
-) -> BenchmarkResult:
-    """Executa benchmark completo para uma estrutura"""
-    
-    result = BenchmarkResult(
-        structure_name=struct_name,
-        structure_type=struct_type,
-        algorithm=algorithm,
-        data_size=len(data)
-    )
-    
-    print(f"  {struct_name}: ", end='', flush=True)
-    
-    total_time = 0.0
-    total_memory = 0.0
-    min_time = float('inf')
-    max_time = 0.0
-    min_memory = float('inf')
-    max_memory = 0.0
-    
-    for i in range(NUM_EXECUTIONS):
-        ds = create_structure(len(data))
-        time_ns, memory_bytes = run_single_benchmark(ds, data, algorithm)
-        
-        run = BenchmarkRun(
-            execution_number=i + 1,
-            time_ns=time_ns,
-            time_micros=time_ns / 1000.0,
-            time_ms=time_ns / 1e6,
-            memory_used_kb=memory_bytes / 1024.0,
-            memory_used_mb=memory_bytes / (1024.0 * 1024.0)
-        )
-        
-        result.runs.append(run)
-        
-        total_time += run.time_ms
-        total_memory += run.memory_used_mb
-        
-        min_time = min(min_time, run.time_ms)
-        max_time = max(max_time, run.time_ms)
-        min_memory = min(min_memory, run.memory_used_mb)
-        max_memory = max(max_memory, run.memory_used_mb)
-        
-        print(".", end='', flush=True)
-    
-    result.avg_time_ms = total_time / NUM_EXECUTIONS
-    result.avg_memory_mb = total_memory / NUM_EXECUTIONS
-    result.min_time_ms = min_time
-    result.max_time_ms = max_time
-    result.min_memory_mb = min_memory
-    result.max_memory_mb = max_memory
-    
-    print(f" Concluído (Média: {result.avg_time_ms:.2f}ms, {result.avg_memory_mb:.2f}MB)")
-    
-    return result
+def log_system_info(log_file):
+    """Registra informações do sistema no log."""
+    log_file.write("="*60 + "\n")
+    log_file.write("     BENCHMARK - PYTHON - COUNTING SORT      \n")
+    log_file.write("="*60 + "\n")
+    log_file.write(f"Data/Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    log_file.write(f"Sistema: {platform.system()}/{platform.machine()}\n")
+    log_file.write(f"Python: {platform.python_version()}\n")
+    log_file.write("="*60 + "\n\n")
 
 
-def run_benchmarks_for_size(data: List[int], algorithm: str, log_file) -> List[BenchmarkResult]:
-    """Executa benchmarks para um tamanho específico de dados"""
-    results = []
-    
-    log_file.write(f"\n=== TAMANHO DO DATASET: {len(data)} elementos ===\n")
-    log_file.write(f"Algoritmo: {algorithm.upper()} SORT\n")
-    print(f"\n--- Testando com {len(data)} elementos ({algorithm} sort) ---")
-    
-    # Lista Linear
-    result = benchmark_structure(
-        "Lista Linear", "linear",
-        lambda size: ListLinear(size + 100),
-        data, algorithm
-    )
-    results.append(result)
-    log_result(log_file, result)
-    
-    # Lista Dinâmica
-    result = benchmark_structure(
-        "Lista Dinâmica", "dynamic",
-        lambda size: ListDynamic(),
-        data, algorithm
-    )
-    results.append(result)
-    log_result(log_file, result)
-    
-    # Fila Linear
-    result = benchmark_structure(
-        "Fila Linear", "linear",
-        lambda size: QueueLinear(size + 100),
-        data, algorithm
-    )
-    results.append(result)
-    log_result(log_file, result)
-    
-    # Fila Dinâmica
-    result = benchmark_structure(
-        "Fila Dinâmica", "dynamic",
-        lambda size: QueueDynamic(),
-        data, algorithm
-    )
-    results.append(result)
-    log_result(log_file, result)
-    
-    # Pilha Linear
-    result = benchmark_structure(
-        "Pilha Linear", "linear",
-        lambda size: StackLinear(size + 100),
-        data, algorithm
-    )
-    results.append(result)
-    log_result(log_file, result)
-    
-    # Pilha Dinâmica
-    result = benchmark_structure(
-        "Pilha Dinâmica", "dynamic",
-        lambda size: StackDynamic(),
-        data, algorithm
-    )
-    results.append(result)
-    log_result(log_file, result)
-    
-    return results
-
-
-def log_result(log_file, result: BenchmarkResult):
-    """Registra resultado no arquivo de log"""
-    log_file.write(f"\n{result.structure_name} ({result.structure_type}) - {result.data_size} elementos:\n")
-    log_file.write("-" * 40 + "\n")
-    
-    # Cabeçalho da tabela
-    log_file.write("Execução | Tempo (ms) | Memória (MB)\n")
-    log_file.write("---------|------------|-------------\n")
-    
-    # Dados de cada execução
-    for run in result.runs:
-        log_file.write(f"{run.execution_number:8d} | {run.time_ms:10.2f} | {run.memory_used_mb:11.2f}\n")
-    
-    log_file.write("---------|------------|-------------\n")
-    log_file.write(f"MÉDIA    | {result.avg_time_ms:10.2f} | {result.avg_memory_mb:11.2f}\n")
-    log_file.write(f"MÍNIMO   | {result.min_time_ms:10.2f} | {result.min_memory_mb:11.2f}\n")
-    log_file.write(f"MÁXIMO   | {result.max_time_ms:10.2f} | {result.max_memory_mb:11.2f}\n")
-    log_file.write("\n")
-
-
-def get_system_info() -> SystemInfo:
-    """Coleta informações do sistema"""
-    return SystemInfo(
-        timestamp=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-        os=platform.system(),
-        arch=platform.machine(),
-        cpus=psutil.cpu_count(),
-        python_version=platform.python_version(),
-        total_mem_gb=psutil.virtual_memory().total / (1024**3)
-    )
-
-
-def log_system_info(log_file, info: SystemInfo):
-    """Registra informações do sistema no log"""
-    log_file.write("="*50 + "\n")
-    log_file.write("     BENCHMARK - ORDENAÇÃO NÃO COMPARATIVA      \n")
-    log_file.write("="*50 + "\n")
-    log_file.write(f"Data/Hora: {info.timestamp}\n")
-    log_file.write(f"Sistema: {info.os}/{info.arch}\n")
-    log_file.write(f"CPUs: {info.cpus}\n")
-    log_file.write(f"Python Version: {info.python_version}\n")
-    log_file.write(f"Memória Total: {info.total_mem_gb:.2f} GB\n")
-    log_file.write(f"Execuções por teste: {NUM_EXECUTIONS}\n")
-    log_file.write("="*50 + "\n")
-
-
-def create_summary_table(log_file, all_results: Dict[str, List[List[BenchmarkResult]]]):
-    """Cria tabela resumo final"""
-    log_file.write("\n" + "="*50 + "\n")
-    log_file.write("           TABELA RESUMO FINAL           \n")
-    log_file.write("="*50 + "\n\n")
-    
-    sizes = [100, 1000, 10000, 100000, 1000000]
-    structures = [
+def create_summary_table(log_file, all_results: Dict[str, Dict[int, BenchmarkResult]], sizes: List[int]):
+    """Cria e salva a tabela resumo final no arquivo de log."""
+    structures_order = [
         "Lista Linear", "Lista Dinâmica",
         "Fila Linear", "Fila Dinâmica",
         "Pilha Linear", "Pilha Dinâmica"
     ]
     
-    for algorithm in ["counting", "radix"]:
-        log_file.write(f"\n{'='*20} {algorithm.upper()} SORT {'='*20}\n\n")
-        
-        # Cabeçalho
-        log_file.write(f"{'Estrutura':<20} | {'Tipo':<8} | ")
-        for size in sizes:
-            log_file.write(f"{size:>10} | ")
-        log_file.write("\n")
-        
-        # Linha separadora
-        log_file.write("-"*20 + "-+-" + "-"*8 + "-+-")
-        for _ in sizes:
-            log_file.write("-"*11 + "+-")
-        log_file.write("\n")
-        
-        # Dados de tempo
-        log_file.write("\nTEMPO MÉDIO (ms):\n")
-        for struct_name in structures:
-            # Encontrar tipo da estrutura
-            struct_type = ""
-            for size_idx, results in enumerate(all_results[algorithm]):
-                for result in results:
-                    if result.structure_name == struct_name:
-                        struct_type = result.structure_type
-                        break
-                if struct_type:
-                    break
-            
-            log_file.write(f"{struct_name:<20} | {struct_type:<8} | ")
-            
-            for size_idx in range(len(sizes)):
-                found = False
-                for result in all_results[algorithm][size_idx]:
-                    if result.structure_name == struct_name:
-                        log_file.write(f"{result.avg_time_ms:10.2f} | ")
-                        found = True
-                        break
-                if not found:
-                    log_file.write(f"{'N/A':>10} | ")
-            log_file.write("\n")
-        
-        # Dados de memória
-        log_file.write("\nMEMÓRIA MÉDIA (MB):\n")
-        for struct_name in structures:
-            # Encontrar tipo da estrutura
-            struct_type = ""
-            for size_idx, results in enumerate(all_results[algorithm]):
-                for result in results:
-                    if result.structure_name == struct_name:
-                        struct_type = result.structure_type
-                        break
-                if struct_type:
-                    break
-            
-            log_file.write(f"{struct_name:<20} | {struct_type:<8} | ")
-            
-            for size_idx in range(len(sizes)):
-                found = False
-                for result in all_results[algorithm][size_idx]:
-                    if result.structure_name == struct_name:
-                        log_file.write(f"{result.avg_memory_mb:10.2f} | ")
-                        found = True
-                        break
-                if not found:
-                    log_file.write(f"{'N/A':>10} | ")
-            log_file.write("\n")
+    log_file.write("\n" + "="*60 + "\n")
+    log_file.write("                   TABELA RESUMO FINAL\n")
+    log_file.write("="*60 + "\n\n")
+    
+    # Cabeçalho da tabela
+    header = f"{'Estrutura':<20} | {'Tipo':<8} | "
+    for size in sizes:
+        header += f"{size:>10} | "
+    log_file.write(header + "\n")
+    
+    separator = "-"*20 + "-+-" + "-"*8 + "-+-"
+    for _ in sizes:
+        separator += "-"*11 + "+-"
+    log_file.write(separator + "\n")
+    
+    # Seção de Tempo
+    log_file.write("\nTEMPO (ms):\n")
+    for struct_name in structures_order:
+        if struct_name in all_results:
+            results_by_size = all_results[struct_name]
+            struct_type = results_by_size[sizes[0]].structure_type
+            line = f"{struct_name:<20} | {struct_type:<8} | "
+            for size in sizes:
+                line += f"{results_by_size[size].time_ms:10.2f} | "
+            log_file.write(line + "\n")
+
+    # Seção de Memória
+    log_file.write("\nMEMÓRIA (MB):\n")
+    for struct_name in structures_order:
+        if struct_name in all_results:
+            results_by_size = all_results[struct_name]
+            struct_type = results_by_size[sizes[0]].structure_type
+            line = f"{struct_name:<20} | {struct_type:<8} | "
+            for size in sizes:
+                line += f"{results_by_size[size].memory_mb:10.2f} | "
+            log_file.write(line + "\n")
 
 
 def main():
-    """Função principal"""
-    # Criar arquivo de log
-    log_filename = f"benchmark_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    """Função principal que orquestra o benchmark."""
+    log_filename = f"benchmark_python_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     
     with open(log_filename, 'w', encoding='utf-8') as log_file:
-        # Log system info
-        sys_info = get_system_info()
-        log_system_info(log_file, sys_info)
+        log_system_info(log_file)
         
-        print("=== BENCHMARK ORDENAÇÃO NÃO COMPARATIVA ===")
-        print(f"Executando {NUM_EXECUTIONS} testes para cada estrutura...")
-        print(f"Salvando resultados em: {log_filename}")
+        print("=== BENCHMARK PYTHON - COUNTING SORT ===")
+        print(f"Resultados serão salvos em: {log_filename}")
         
-        # Tamanhos para testar
-        sizes = [100, 1000, 10000, 100000, 1000000]
-        all_results = {"counting": [], "radix": []}
+        # ALTERADO: Apenas um algoritmo, sem loop de execuções
+        sizes_to_test = [100, 1000, 10000, 100000, 1000000]
         
-        # Caminho do arquivo CSV - ajuste conforme necessário
-        csv_path = "ml-25m/ratings.csv"
+        # Dicionário para armazenar todos os resultados
+        all_results: Dict[str, Dict[int, BenchmarkResult]] = {}
+
+        # Mapeamento de estruturas para facilitar a criação
+        structures_to_test: Dict[str, Callable[[int], DataStructure]] = {
+            "Lista Linear": lambda size: ListLinear(size),
+            "Lista Dinâmica": lambda size: ListDynamic(),
+            "Fila Linear": lambda size: QueueLinear(size),
+            "Fila Dinâmica": lambda size: QueueDynamic(),
+            "Pilha Linear": lambda size: StackLinear(size),
+            "Pilha Dinâmica": lambda size: StackDynamic(),
+        }
         
-        for algorithm in ["counting", "radix"]:
-            print(f"\n\n{'='*20} {algorithm.upper()} SORT {'='*20}")
-            all_results[algorithm] = []
+        csv_path = "/home/john/Desktop/NonComparativeSortingAlgorithms/ml-25m/ratings.csv"
+
+        for size in sizes_to_test:
+            print(f"\n--- Testando com {size} elementos ---")
+            log_file.write(f"\n=== TAMANHO DO DATASET: {size} elementos ===\n")
+
+            data = load_ratings_csv(csv_path, size)
+            if not data:
+                print(f"Aviso: Não foi possível ler o CSV. Gerando dados de teste para o tamanho {size}.")
+                data = generate_test_data(size)
             
-            for size in sizes:
-                # Carregar dados
-                data = load_ratings_csv(csv_path, size)
+            for name, create_func in structures_to_test.items():
+                ds_instance = create_func(size)
+                struct_type = "linear" if "Linear" in name else "dynamic"
                 
-                # Se não conseguir ler o arquivo, criar dados de teste
-                if not data:
-                    print(f"Aviso: Usando dados de teste para tamanho {size}")
-                    data = generate_test_data(size)
+                print(f"  {name:<20}: ", end='', flush=True)
                 
-                results = run_benchmarks_for_size(data, algorithm, log_file)
-                all_results[algorithm].append(results)
+                # Executa medições separadas
+                tempo_ms = medir_tempo(ds_instance, data)
+                memoria_bytes = medir_memoria(ds_instance, data)
+                
+                memoria_mb = memoria_bytes / (1024.0 * 1024.0)
+
+                # Armazena o resultado único
+                result = BenchmarkResult(
+                    structure_name=name,
+                    structure_type=struct_type,
+                    data_size=size,
+                    time_ms=tempo_ms,
+                    memory_mb=memoria_mb
+                )
+                
+                if name not in all_results:
+                    all_results[name] = {}
+                all_results[name][size] = result
+                
+                print(f"Concluído (Tempo: {tempo_ms:.2f}ms, Memória: {memoria_mb:.2f}MB)")
+                log_file.write(f"{name} -> Tempo: {tempo_ms:.4f} ms, Memória: {memoria_mb:.4f} MB\n")
+
+        # Gerar a tabela resumo final no arquivo de log
+        create_summary_table(log_file, all_results, sizes_to_test)
         
-        # Criar tabela resumo
-        create_summary_table(log_file, all_results)
-        
-        log_file.write("\n" + "="*50 + "\n")
-        log_file.write("         BENCHMARK FINALIZADO            \n")
-        log_file.write("="*50 + "\n")
+        log_file.write("\n" + "="*60 + "\n")
+        log_file.write("                 BENCHMARK FINALIZADO\n")
+        log_file.write("="*60 + "\n")
     
     print(f"\n✅ Benchmark concluído! Resultados salvos em: {log_filename}")
 

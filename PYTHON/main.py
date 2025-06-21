@@ -45,7 +45,7 @@ def main():
     print("=== Ordenação Não Comparativa em Python ===")
     
     # Carregar dados do CSV ou gerar dados de teste
-    csv_path = "ml-25m/ratings.csv"
+    csv_path = "/home/john/Desktop/NonComparativeSortingAlgorithms/ml-25m/ratings.csv"
     data = load_ratings_csv(csv_path, 1000)
     
     if not data:

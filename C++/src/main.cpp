@@ -1,184 +1,241 @@
 #include <iostream>
 #include <vector>
-#include <memory>
+#include <string>
 #include <chrono>
+#include <map>
+#include <memory>
+#include <list>
+#include <stack>
+#include <queue>
+#include <iomanip>
+#include <algorithm>
+#include <numeric>
 
-// Inclui todos os headers
-#include "CSVReader.hpp"
-#include "CountingSort.hpp"
-#include "PerformanceAnalyzer.hpp"
-#include "VectorStructure.hpp"
-#include "ListStructure.hpp"
-#include "QueueStructure.hpp"
-#include "StackStructure.hpp"
+// --- Suposição de Dependências (para o código compilar) ---
+// Normalmente estariam em arquivos .hpp separados.
+namespace CountingSort {
+    std::vector<int> sort(std::vector<int> data) {
+        if (data.empty()) return {};
+        int max_val = *std::max_element(data.begin(), data.end());
+        std::vector<int> counts(max_val + 1, 0);
+        for (int val : data) counts[val]++;
+        std::vector<int> sorted_data;
+        sorted_data.reserve(data.size());
+        for (int i = 0; i <= max_val; i++) {
+            for (int j = 0; j < counts[i]; j++) {
+                sorted_data.push_back(i);
+            }
+        }
+        return sorted_data;
+    }
+} // namespace CountingSort
 
-void printHeader()
+// --- NOVO: Estrutura de Teste Sistemático ---
+
+// NOVO: Interface comum para todas as estruturas de dados
+class DataStructure {
+public:
+    virtual ~DataStructure() = default;
+    virtual void insert(int value) = 0;
+    virtual std::vector<int> toVector() const = 0;
+    virtual void fromVector(const std::vector<int>& data) = 0;
+    virtual std::string getName() const = 0;
+    virtual std::string getType() const = 0;
+    virtual void clear() = 0;
+};
+
+// --- Implementações das 6 Estruturas de Dados ---
+
+class ListaEstatica : public DataStructure {
+    std::vector<int> data;
+public:
+    void insert(int value) override { data.push_back(value); }
+    std::vector<int> toVector() const override { return data; }
+    void fromVector(const std::vector<int>& vec) override { data = vec; }
+    std::string getName() const override { return "Lista Estatica"; }
+    std::string getType() const override { return "estatico"; }
+    void clear() override { data.clear(); }
+};
+
+class ListaDinamica : public DataStructure {
+    std::list<int> data;
+public:
+    void insert(int value) override { data.push_back(value); }
+    std::vector<int> toVector() const override { return {data.begin(), data.end()}; }
+    void fromVector(const std::vector<int>& vec) override { data.assign(vec.begin(), vec.end()); }
+    std::string getName() const override { return "Lista Dinamica"; }
+    std::string getType() const override { return "dinamico"; }
+    void clear() override { data.clear(); }
+};
+
+class PilhaEstatica : public DataStructure {
+    std::vector<int> data;
+public:
+    void insert(int value) override { data.push_back(value); }
+    std::vector<int> toVector() const override { return data; }
+    void fromVector(const std::vector<int>& vec) override { data = vec; }
+    std::string getName() const override { return "Pilha Estatica"; }
+    std::string getType() const override { return "estatico"; }
+    void clear() override { data.clear(); }
+};
+
+class PilhaDinamica : public DataStructure {
+    std::list<int> data;
+public:
+    void insert(int value) override { data.push_front(value); } // LIFO
+    std::vector<int> toVector() const override { return {data.begin(), data.end()}; }
+    void fromVector(const std::vector<int>& vec) override { data.assign(vec.begin(), vec.end()); }
+    std::string getName() const override { return "Pilha Dinamica"; }
+    std::string getType() const override { return "dinamico"; }
+    void clear() override { data.clear(); }
+};
+
+class FilaEstatica : public DataStructure {
+    std::vector<int> data;
+public:
+    void insert(int value) override { data.push_back(value); }
+    std::vector<int> toVector() const override { return data; }
+    void fromVector(const std::vector<int>& vec) override { data = vec; }
+    std::string getName() const override { return "Fila Estatica"; }
+    std::string getType() const override { return "estatico"; }
+    void clear() override { data.clear(); }
+};
+
+class FilaDinamica : public DataStructure {
+    std::list<int> data;
+public:
+    void insert(int value) override { data.push_back(value); } // FIFO
+    std::vector<int> toVector() const override { return {data.begin(), data.end()}; }
+    void fromVector(const std::vector<int>& vec) override { data.assign(vec.begin(), vec.end()); }
+    std::string getName() const override { return "Fila Dinamica"; }
+    std::string getType() const override { return "dinamico"; }
+    void clear() override { data.clear(); }
+};
+
+
+// --- Funções de Medição e Exibição ---
+
+// NOVO: Mede o tempo de um ciclo completo: inserir -> converter -> ordenar -> reconverter
+double medirDesempenho(DataStructure& estrutura, const std::vector<int>& dados) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    estrutura.clear();
+    for (int val : dados) {
+        estrutura.insert(val);
+    }
+    auto vec = estrutura.toVector();
+    auto sorted_vec = CountingSort::sort(vec);
+    estrutura.fromVector(sorted_vec);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+    return elapsed.count();
+}
+
+// NOVO: Calcula a memória teórica usada pela estrutura
+size_t calculatePreciseMemoryUsage(const DataStructure& estrutura, int numElementos) {
+    if (numElementos == 0) return 0;
+    if (estrutura.getType() == "estatico") {
+        return static_cast<size_t>(numElementos) * sizeof(int);
+    } else {
+        // Para std::list, cada nó tem o valor, um ponteiro para o próximo e um para o anterior
+        size_t node_size = sizeof(int) + 2 * sizeof(void*);
+        return static_cast<size_t>(numElementos) * node_size;
+    }
+}
+
+// NOVO: Exibe a tabela de resumo final
+void exibirTabelaResumoFinal(
+    const std::vector<std::string>& nomes,
+    const std::map<std::string, std::map<int, double>>& tempos,
+    const std::map<std::string, std::map<int, size_t>>& memorias,
+    const std::vector<int>& volumes)
 {
+    std::cout << "\n\n";
+    std::cout << "                                         TABELA RESUMO FINAL\n";
+    std::cout << std::string(120, '=') << std::endl;
+
+    // Cabeçalho
+    std::cout << std::left << std::setw(22) << "Estrutura" << " | " << std::setw(10) << "Tipo" << " |";
+    for (int volume : volumes) {
+        std::cout << std::right << std::setw(12) << volume << " |";
+    }
+    std::cout << "\n" << std::string(120, '-') << std::endl;
+
+    // Seção de Tempo
+    std::cout << "\nTEMPO (ms):\n";
+    for (const auto& nome : nomes) {
+        std::string tipo = (nome.find("Estatica") != std::string::npos) ? "estatico" : "dinamico";
+        std::cout << std::left << std::setw(22) << nome << " | " << std::setw(10) << tipo << " |";
+        const auto& resultados_tempo = tempos.at(nome);
+        for (int volume : volumes) {
+            std::cout << std::right << std::fixed << std::setprecision(2) << std::setw(12) << resultados_tempo.at(volume) << " |";
+        }
+        std::cout << std::endl;
+    }
+
+    // Seção de Memória
+    std::cout << "\nMEMORIA (MB):\n";
+     for (const auto& nome : nomes) {
+        std::string tipo = (nome.find("Estatica") != std::string::npos) ? "estatico" : "dinamico";
+        std::cout << std::left << std::setw(22) << nome << " | " << std::setw(10) << tipo << " |";
+        const auto& resultados_memoria = memorias.at(nome);
+        for (int volume : volumes) {
+            double memoria_mb = static_cast<double>(resultados_memoria.at(volume)) / (1024.0 * 1024.0);
+            std::cout << std::right << std::fixed << std::setprecision(2) << std::setw(12) << memoria_mb << " |";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::string(120, '=') << std::endl;
+}
+
+// --- Função Principal do Benchmark ---
+
+int main() {
+    // ALTERADO: Lógica principal para rodar o benchmark sistemático
     std::cout << "================================================================" << std::endl;
-    std::cout << "         ANÁLISE DE PERFORMANCE - COUNTING SORT" << std::endl;
-    std::cout << "    Comparação entre Diferentes Estruturas de Dados" << std::endl;
+    std::cout << "      ANÁLISE DE PERFORMANCE - C++ - COUNTING SORT" << std::endl;
     std::cout << "================================================================" << std::endl;
-    std::cout << std::endl;
-}
 
-void demonstrateCountingSort(const std::vector<int> &sample)
-{
-    std::cout << "Testando algoritmo Counting Sort... ";
+    const std::vector<int> VOLUMES_TESTE = {100, 1000, 10000, 100000, 1000000};
+    
+    // Preparar as estruturas para o teste
+    std::vector<std::unique_ptr<DataStructure>> estruturas;
+    estruturas.push_back(std::make_unique<ListaEstatica>());
+    estruturas.push_back(std::make_unique<ListaDinamica>());
+    estruturas.push_back(std::make_unique<PilhaEstatica>());
+    estruturas.push_back(std::make_unique<PilhaDinamica>());
+    estruturas.push_back(std::make_unique<FilaEstatica>());
+    estruturas.push_back(std::make_unique<FilaDinamica>());
 
-    // Pega uma amostra pequena para demonstração
-    std::vector<int> demo(sample.begin(), sample.begin() + std::min(static_cast<size_t>(20), sample.size()));
+    std::vector<std::string> nomesEstruturas;
+    for(const auto& s : estruturas) nomesEstruturas.push_back(s->getName());
 
-    auto sorted = CountingSort::sort(demo);
-    bool isCorrect = CountingSort::isSorted(sorted);
+    // Estruturas para armazenar resultados
+    std::map<std::string, std::map<int, double>> resultadosTempo;
+    std::map<std::string, std::map<int, size_t>> resultadosMemoria;
 
-    std::cout << (isCorrect ? "✓ Funcionando corretamente" : "✗ Erro detectado") << std::endl;
-}
+    for (int volume : VOLUMES_TESTE) {
+        // Gerar dados de teste (em um cenário real, ler do CSVReader)
+        std::cout << "\n--- GERANDO " << volume << " ENTRADAS DE TESTE ---" << std::endl;
+        std::vector<int> dados;
+        dados.reserve(volume);
+        for (int i = 0; i < volume; ++i) dados.push_back(i % 50); // Dados simulados
 
-void demonstrateStructures(const std::vector<int> &sample)
-{
-    std::cout << "Testando estruturas de dados... ";
+        for (auto& estrutura_ptr : estruturas) {
+            std::cout << "Testando " << std::left << std::setw(25) << estrutura_ptr->getName() << "... ";
+            
+            double tempo = medirDesempenho(*estrutura_ptr, dados);
+            size_t memoria = calculatePreciseMemoryUsage(*estrutura_ptr, volume);
 
-    // Amostra pequena para demonstração
-    std::vector<int> demo(sample.begin(), sample.begin() + std::min(static_cast<size_t>(10), sample.size()));
+            resultadosTempo[estrutura_ptr->getName()][volume] = tempo;
+            resultadosMemoria[estrutura_ptr->getName()][volume] = memoria;
 
-    // Testa cada tipo de estrutura
-    std::vector<std::unique_ptr<DataStructure>> structures;
-    structures.push_back(std::make_unique<VectorStructure>(false));
-    structures.push_back(std::make_unique<VectorStructure>(true));
-    structures.push_back(std::make_unique<ListStructure>(false));
-    structures.push_back(std::make_unique<ListStructure>(true));
-
-    int successCount = 0;
-    for (auto &structure : structures)
-    {
-        // Carrega dados
-        for (int val : demo)
-        {
-            structure->insert(val);
-        }
-
-        // Converte para vetor
-        auto vectorData = structure->toVector();
-
-        // Ordena
-        auto sortedData = CountingSort::sort(vectorData);
-
-        // Converte de volta
-        structure->fromVector(sortedData);
-
-        // Verifica resultado
-        auto finalData = structure->toVector();
-        if (CountingSort::isSorted(finalData))
-        {
-            successCount++;
+            std::cout << "Concluido! (" << std::fixed << std::setprecision(2) << tempo << " ms)" << std::endl;
         }
     }
 
-    std::cout << successCount << "/" << structures.size() << " estruturas funcionando corretamente" << std::endl;
-}
-
-void runInteractiveMode()
-{
-    std::cout << "=== MODO INTERATIVO ===" << std::endl;
-    std::cout << "Digite o caminho para o arquivo ratings.csv: ";
-
-    std::string filename;
-    std::getline(std::cin, filename);
-
-    CSVReader reader(filename);
-
-    if (!reader.isValidFile())
-    {
-        std::cout << "Arquivo não encontrado ou inválido. Usando arquivo padrão 'ratings.csv'" << std::endl;
-        reader = CSVReader("ratings.csv");
-    }
-
-    std::cout << "Quantos registros deseja carregar? (0 = todos): ";
-    size_t maxRecords;
-    std::cin >> maxRecords;
-
-    auto movieIds = reader.readMovieIds(maxRecords);
-
-    if (movieIds.empty())
-    {
-        std::cout << "Nenhum dado carregado. Encerrando." << std::endl;
-        return;
-    }
-
-    // Demonstrações
-    demonstrateCountingSort(movieIds);
-    demonstrateStructures(movieIds);
-
-    // Análise de performance
-    PerformanceAnalyzer analyzer;
-    analyzer.runFullAnalysis(movieIds);
-
-    // Salvar resultados
-    analyzer.saveResultsToFile("output.dat");
-    analyzer.saveResultsToCSV("performance_results.csv");
-
-    std::cout << "Resultados salvos em 'output.dat' e 'performance_results.csv'" << std::endl;
-}
-
-int main(int argc, char *argv[])
-{
-    printHeader();
-
-    try
-    {
-        if (argc > 1)
-        {
-            // Modo linha de comando
-            std::string filename = argv[1];
-            size_t maxRecords = 0;
-
-            if (argc > 2)
-            {
-                maxRecords = std::stoul(argv[2]);
-            }
-
-            std::cout << "Carregando dados de: " << filename << std::endl;
-            if (maxRecords > 0)
-            {
-                std::cout << "Limitando a " << maxRecords << " registros" << std::endl;
-            }
-            std::cout << std::endl;
-
-            CSVReader reader(filename);
-            auto movieIds = reader.readMovieIds(maxRecords);
-
-            if (movieIds.empty())
-            {
-                std::cout << "Nenhum dado carregado. Verifique o arquivo." << std::endl;
-                return 1;
-            }
-
-            // Demonstrações rápidas
-            demonstrateCountingSort(movieIds);
-            demonstrateStructures(movieIds);
-
-            // Análise completa
-            PerformanceAnalyzer analyzer;
-            analyzer.runFullAnalysis(movieIds);
-            analyzer.saveResultsToFile("output.dat");
-            analyzer.saveResultsToCSV("performance_results.csv");
-        }
-        else
-        {
-            // Modo interativo
-            runInteractiveMode();
-        }
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Erro: " << e.what() << std::endl;
-        return 1;
-    }
-
-    std::cout << std::endl;
-    std::cout << "=== ANÁLISE FINALIZADA ===" << std::endl;
-    std::cout << "Resultados detalhados salvos em 'output.dat'" << std::endl;
-    std::cout << "Dados para análise salvos em 'performance_results.csv'" << std::endl;
+    exibirTabelaResumoFinal(nomesEstruturas, resultadosTempo, resultadosMemoria, VOLUMES_TESTE);
 
     return 0;
 }

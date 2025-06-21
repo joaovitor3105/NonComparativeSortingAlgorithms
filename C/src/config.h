@@ -31,7 +31,7 @@ typedef enum
 #define TIPO_DADO RATINGS // Escolha do tipo de dado a ser lido
 
 // CONFIGURAÇÕES DE ARQUIVO
-#define ARQUIVO_ENTRADA "datasets/ratings.csv"
+#define ARQUIVO_ENTRADA "/home/john/Desktop/NonComparativeSortingAlgorithms/ml-25m/ratings.csv"
 
 // Escolha da estrutura a ser testada
 #define ESTRUTURA_ATIVA LISTA_DINAMICA
