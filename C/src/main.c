@@ -12,6 +12,8 @@
 // NOVO: Volumes de teste a serem executados automaticamente
 const int VOLUMES_TESTE[] = {100, 1000, 10000, 100000, 1000000};
 const int NUM_VOLUMES = sizeof(VOLUMES_TESTE) / sizeof(VOLUMES_TESTE[0]);
+// NOVO: Número de repetições para cada teste para calcular a média
+const int NUM_REPETICOES = 10;
 
 // NOVO: Estrutura para retornar os resultados de uma única medição
 typedef struct
@@ -260,7 +262,8 @@ int main()
     printf("📊 Volumes de teste: ");
     for (int i = 0; i < NUM_VOLUMES; i++)
         printf("%d ", VOLUMES_TESTE[i]);
-    printf("\n\n");
+    printf("\n");
+    printf("🔄 Repetições por teste: %d\n\n", NUM_REPETICOES); // NOVO: Mostra o número de repetições
 
     // ALTERADO: Lógica principal para testar múltiplos volumes e armazenar resultados
     TipoEstrutura estruturas[] = {LISTA_LINEAR, LISTA_DINAMICA, PILHA_LINEAR, PILHA_DINAMICA, FILA_LINEAR, FILA_DINAMICA};
@@ -275,30 +278,57 @@ int main()
         for (int j = 0; j < NUM_VOLUMES; j++)
         {
             int volumeAtual = VOLUMES_TESTE[j];
-            printf("⏳ Testando %s com %d elementos...", nomesEstruturas[i], volumeAtual);
+            double somaTempos = 0.0;    // NOVO: Acumulador para a soma dos tempos
+            int testesBemSucedidos = 0; // NOVO: Contador de testes bem-sucedidos
+            size_t memoriaAmostra = 0;  // NOVO: Armazena a memória de uma das execuções (memória não varia tanto por execução)
+
+            printf("⏳ Testando %s com %d elementos (%d repetições)...", nomesEstruturas[i], volumeAtual, NUM_REPETICOES);
             fflush(stdout);
 
-            ResultadoMedicao res = medirDesempenho(estruturas[i], volumeAtual);
-
-            if (res.ordenadoCorretamente)
+            for (int k = 0; k < NUM_REPETICOES; k++) // NOVO: Loop para as repetições
             {
-                resultadosTempo[i][j] = res.tempoTotal;
-                resultadosMemoria[i][j] = calculatePreciseMemoryUsage(estruturas[i], res.numElementos);
-                printf(" ✅ Concluído! (%.2f ms)\n", res.tempoTotal);
+                ResultadoMedicao res = medirDesempenho(estruturas[i], volumeAtual);
+
+                if (res.ordenadoCorretamente)
+                {
+                    somaTempos += res.tempoTotal;
+                    testesBemSucedidos++;
+                    if (k == 0) // Pega a memória na primeira execução, já que ela é estática para o mesmo volume
+                    {
+                        memoriaAmostra = calculatePreciseMemoryUsage(estruturas[i], res.numElementos);
+                    }
+                }
+                else
+                {
+                    printf(" ❌ Erro na ordenação em uma das repetições para %s com %d elementos!\n", nomesEstruturas[i], volumeAtual);
+                    somaTempos = -1.0; // Sinaliza falha se qualquer repetição falhar
+                    memoriaAmostra = 0;
+                    break; // Sai do loop de repetições
+                }
+            }
+
+            if (somaTempos != -1.0 && testesBemSucedidos > 0) // NOVO: Calcula a média se houve testes bem-sucedidos
+            {
+                resultadosTempo[i][j] = somaTempos / testesBemSucedidos;
+                resultadosMemoria[i][j] = memoriaAmostra;
+                printf(" ✅ Concluído! Média: (%.2f ms)\n", resultadosTempo[i][j]);
             }
             else
             {
                 resultadosTempo[i][j] = -1.0; // Sinal de falha
                 resultadosMemoria[i][j] = 0;
-                printf(" ❌ Erro na ordenação!\n");
+                if (somaTempos != -1.0) // Se não foi falha de ordenação, mas testesBemSucedidos == 0
+                {
+                    printf(" ❌ Nenhuma repetição bem-sucedida para %s com %d elementos.\n", nomesEstruturas[i], volumeAtual);
+                }
             }
         }
     }
+
     // Testando novamente a Pilha Linear com 100 linhas e substituindo o resultado anterior para consertar bug
     ResultadoMedicao resultadoTeste = medirDesempenho(PILHA_LINEAR, 100);
     resultadosTempo[2][0] = resultadoTeste.tempoTotal;
     resultadosMemoria[2][0] = calculatePreciseMemoryUsage(PILHA_LINEAR, resultadoTeste.numElementos);
-
     // NOVO: Exibe a tabela de resumo final
     exibirTabelaResumoFinal(resultadosTempo, resultadosMemoria, nomesEstruturas);
 
