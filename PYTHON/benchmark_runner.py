@@ -4,6 +4,7 @@ import sys
 import platform
 import tracemalloc
 from datetime import datetime
+import psutil
 from typing import List, Dict, Callable
 from dataclasses import dataclass
 
