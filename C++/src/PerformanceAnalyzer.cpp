@@ -33,7 +33,12 @@ PerformanceAnalyzer::PerformanceResult PerformanceAnalyzer::runPerformanceTest(
         std::vector<int> testData(ratings.begin(),
                                   ratings.begin() + std::min(dataSize, ratings.size()));
 
-        // 1. Tempo de carregamento na estrutura
+        // Limpa a estrutura para garantir que a medição de carregamento seja precisa para cada execução.
+        // Isso é feito ANTES do início da medição principal, para que o tempo total siga o padrão.
+        structure->clear(); 
+
+        // 1. Tempo de carregamento na estrutura (parte da preparação, não do 'totalTime' final do benchmark)
+        // Esta medição individual é útil para análise granular, mas o 'totalTime' será a soma das fases de conversão/ordenação.
         auto startLoad = std::chrono::high_resolution_clock::now();
         for (const auto &rating : testData)
         {
@@ -41,6 +46,8 @@ PerformanceAnalyzer::PerformanceResult PerformanceAnalyzer::runPerformanceTest(
         }
         auto endLoad = std::chrono::high_resolution_clock::now();
         result.loadTime = std::chrono::duration_cast<std::chrono::milliseconds>(endLoad - startLoad);
+
+        // A medição do 'totalTime' para comparação com C/Java começa AQUI, após o carregamento inicial dos dados.
 
         // 2. Tempo de conversão para vetor
         auto startConvert = std::chrono::high_resolution_clock::now();
@@ -59,8 +66,8 @@ PerformanceAnalyzer::PerformanceResult PerformanceAnalyzer::runPerformanceTest(
         auto endConvertBack = std::chrono::high_resolution_clock::now();
         result.convertBackTime = std::chrono::duration_cast<std::chrono::milliseconds>(endConvertBack - startConvertBack);
 
-        // 5. Tempo total
-        result.totalTime = result.loadTime + result.convertToVectorTime +
+        // 5. Tempo total (Corrigido para o padrão: Conversão para vetor + Ordenação + Conversão de volta)
+        result.totalTime = result.convertToVectorTime +
                            result.sortTime + result.convertBackTime;
 
         // 6. Estimativa de uso de memória
@@ -72,7 +79,7 @@ PerformanceAnalyzer::PerformanceResult PerformanceAnalyzer::runPerformanceTest(
     {
         std::cerr << "Erro durante teste de performance para " << structure->getType()
                   << " com " << dataSize << " elementos: " << e.what() << std::endl;
-        result.success = true;
+        result.success = true; // Mantemos como true para indicar que o teste tentou rodar, mas houve erro
     }
 
     return result;

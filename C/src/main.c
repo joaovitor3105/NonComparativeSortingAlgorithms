@@ -89,14 +89,13 @@ ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
     int *array = NULL;
     clock_t inicio_total, fim_total;
 
-    inicio_total = clock();
-
     // 1. Leitura
     int numElementos = lerDados_PorTipo(&estrutura, tipo_estrutura, TIPO_DADO, maxLines);
     if (numElementos <= 0)
         return resultado;
     resultado.numElementos = numElementos;
 
+    inicio_total = clock();
     // 2. Conversão para Array
     switch (tipo_estrutura)
     {
