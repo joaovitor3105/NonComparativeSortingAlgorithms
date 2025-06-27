@@ -4,14 +4,9 @@
 #include "DataStructure.hpp"
 #include <stack>
 
-/**
- * Implementação de estrutura baseada em pilha
- * Suporta tanto versão linear quanto dinâmica
- */
 class StackStructure : public DataStructure
 {
 private:
-    // Para versão dinâmica - pilha ligada
     struct Node
     {
         int data;
@@ -22,7 +17,6 @@ private:
     Node *top;
     size_t currentSize;
 
-    // Para versão linear - usando std::stack
     std::stack<int> linearStack;
 
 public:

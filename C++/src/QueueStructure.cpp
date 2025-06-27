@@ -1,7 +1,6 @@
 #include "QueueStructure.hpp"
 #include <stdexcept>
 
-
 QueueStructure::QueueStructure(bool dynamic) : DataStructure(dynamic)
 {
     if (isDynamic)
@@ -92,7 +91,6 @@ void QueueStructure::clear()
     }
     else
     {
-        // std::queue não tem método clear(), então criamos uma nova
         linearQueue = std::queue<int>();
     }
 }
@@ -112,7 +110,6 @@ std::vector<int> QueueStructure::toVector() const
     }
     else
     {
-        // Como std::queue não permite iteração, precisamos fazer uma cópia
         std::queue<int> tempQueue = linearQueue;
         while (!tempQueue.empty())
         {
@@ -139,19 +136,26 @@ std::string QueueStructure::getType() const
     return isDynamic ? "Dynamic Queue" : "Linear Queue";
 }
 
-
-size_t QueueStructure::size() {
-    if (isDynamic) {
+size_t QueueStructure::size()
+{
+    if (isDynamic)
+    {
         return currentSize;
-    } else {
+    }
+    else
+    {
         return linearQueue.size();
     }
 }
 
-bool QueueStructure::empty() {
-    if (isDynamic) {
+bool QueueStructure::empty()
+{
+    if (isDynamic)
+    {
         return currentSize == 0;
-    } else {
+    }
+    else
+    {
         return linearQueue.empty();
     }
 }

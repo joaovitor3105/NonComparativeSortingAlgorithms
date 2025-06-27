@@ -4,14 +4,9 @@
 #include "DataStructure.hpp"
 #include <list>
 
-/**
- * Implementação de estrutura baseada em lista
- * Suporta tanto versão linear quanto dinâmica (lista ligada)
- */
 class ListStructure : public DataStructure
 {
 private:
-    // Para versão dinâmica - lista ligada simples
     struct Node
     {
         int data;
@@ -23,7 +18,6 @@ private:
     Node *tail;
     size_t currentSize;
 
-    // Para versão linear - usando std::list
     std::list<int> linearList;
 
 public:
@@ -42,4 +36,4 @@ private:
     void clearDynamicList();
 };
 
-#endif // LISTSTRUCTURE_HPP
+#endif

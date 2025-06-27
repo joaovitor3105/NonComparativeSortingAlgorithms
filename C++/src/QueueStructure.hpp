@@ -4,14 +4,9 @@
 #include "DataStructure.hpp"
 #include <queue>
 
-/**
- * Implementação de estrutura baseada em fila
- * Suporta tanto versão linear quanto dinâmica
- */
 class QueueStructure : public DataStructure
 {
 private:
-    // Para versão dinâmica - fila ligada
     struct Node
     {
         int data;
@@ -23,7 +18,6 @@ private:
     Node *rear;
     size_t currentSize;
 
-    // Para versão linear - usando std::queue
     std::queue<int> linearQueue;
 
 public:
@@ -36,8 +30,8 @@ public:
     void fromVector(const std::vector<int> &vec) override;
     std::string getType() const override;
 
-    size_t size() ;  
-    bool empty() ;   
+    size_t size();
+    bool empty();
 
 private:
     void clearDynamicQueue();
@@ -46,4 +40,4 @@ private:
     bool isEmpty() const;
 };
 
-#endif // QUEUESTRUCTURE_HPP
+#endif

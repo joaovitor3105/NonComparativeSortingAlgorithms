@@ -29,16 +29,11 @@ PerformanceAnalyzer::PerformanceResult PerformanceAnalyzer::runPerformanceTest(
 
     try
     {
-        // Limita os dados ao tamanho solicitado
         std::vector<int> testData(ratings.begin(),
                                   ratings.begin() + std::min(dataSize, ratings.size()));
 
-        // Limpa a estrutura para garantir que a medição de carregamento seja precisa para cada execução.
-        // Isso é feito ANTES do início da medição principal, para que o tempo total siga o padrão.
-        structure->clear(); 
+        structure->clear();
 
-        // 1. Tempo de carregamento na estrutura (parte da preparação, não do 'totalTime' final do benchmark)
-        // Esta medição individual é útil para análise granular, mas o 'totalTime' será a soma das fases de conversão/ordenação.
         auto startLoad = std::chrono::high_resolution_clock::now();
         for (const auto &rating : testData)
         {
@@ -47,30 +42,23 @@ PerformanceAnalyzer::PerformanceResult PerformanceAnalyzer::runPerformanceTest(
         auto endLoad = std::chrono::high_resolution_clock::now();
         result.loadTime = std::chrono::duration_cast<std::chrono::milliseconds>(endLoad - startLoad);
 
-        // A medição do 'totalTime' para comparação com C/Java começa AQUI, após o carregamento inicial dos dados.
-
-        // 2. Tempo de conversão para vetor
         auto startConvert = std::chrono::high_resolution_clock::now();
         std::vector<int> vectorData = structure->toVector();
         auto endConvert = std::chrono::high_resolution_clock::now();
         result.convertToVectorTime = std::chrono::duration_cast<std::chrono::milliseconds>(endConvert - startConvert);
 
-        // 3. Tempo de ordenação (Counting Sort)
         std::chrono::milliseconds sortTime;
         std::vector<int> sortedData = CountingSort::sortWithTiming(vectorData, sortTime);
         result.sortTime = sortTime;
 
-        // 4. Tempo de conversão de volta
         auto startConvertBack = std::chrono::high_resolution_clock::now();
         structure->fromVector(sortedData);
         auto endConvertBack = std::chrono::high_resolution_clock::now();
         result.convertBackTime = std::chrono::duration_cast<std::chrono::milliseconds>(endConvertBack - startConvertBack);
 
-        // 5. Tempo total (Corrigido para o padrão: Conversão para vetor + Ordenação + Conversão de volta)
         result.totalTime = result.convertToVectorTime +
                            result.sortTime + result.convertBackTime;
 
-        // 6. Estimativa de uso de memória
         result.memoryUsage = estimateMemoryUsage(*structure, dataSize);
 
         result.success = true;
@@ -79,7 +67,7 @@ PerformanceAnalyzer::PerformanceResult PerformanceAnalyzer::runPerformanceTest(
     {
         std::cerr << "Erro durante teste de performance para " << structure->getType()
                   << " com " << dataSize << " elementos: " << e.what() << std::endl;
-        result.success = true; // Mantemos como true para indicar que o teste tentou rodar, mas houve erro
+        result.success = true;
     }
 
     return result;
@@ -101,10 +89,8 @@ void PerformanceAnalyzer::runFullAnalysis(const std::vector<int> &ratings)
 
         std::cout << "Processando " << testSize << " elementos... ";
 
-        // Testa todas as estruturas de dados
         auto structures = createAllStructures();
 
-        // Randomiza a ordem dos testes para evitar viés de cache
         std::random_device rd;
         std::mt19937 g(rd());
         std::shuffle(structures.begin(), structures.end(), g);
@@ -129,12 +115,10 @@ void PerformanceAnalyzer::runFullAnalysis(const std::vector<int> &ratings)
 
 void PerformanceAnalyzer::printDetailedResults() const
 {
-    // Método removido - resultados salvos apenas em arquivo
 }
 
 void PerformanceAnalyzer::printSummary() const
 {
-    // Método removido - resultados salvos apenas em arquivo
 }
 
 void PerformanceAnalyzer::saveResultsToCSV(const std::string &filename) const
@@ -146,12 +130,10 @@ void PerformanceAnalyzer::saveResultsToCSV(const std::string &filename) const
         return;
     }
 
-    // Cabeçalho CSV
     file << "Estrutura,Tamanho,TempoCarregamento(ns),TempoConversaoVetor(ns),"
          << "TempoOrdenacao(ns),TempoConversaoVolta(ns),TempoTotal(ns),MemoriaBytes,Sucesso"
          << std::endl;
 
-    // Dados
     for (const auto &result : results)
     {
         file << result.structureType << ","
@@ -172,7 +154,6 @@ void PerformanceAnalyzer::saveResultsToCSV(const std::string &filename) const
 
 void PerformanceAnalyzer::calculateStatistics() const
 {
-    // Método removido - resultados salvos apenas em arquivo
 }
 
 void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
@@ -190,7 +171,6 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
     file << "================================================================" << std::endl;
     file << std::endl;
 
-    // Resultados detalhados
     file << "=== RESULTADOS DETALHADOS ===" << std::endl;
     file << std::endl;
 
@@ -212,11 +192,9 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
 
     file << std::endl;
 
-    // Resumo comparativo
     file << "=== RESUMO COMPARATIVO ===" << std::endl;
     file << std::endl;
 
-    // Agrupa resultados por tamanho
     std::map<size_t, std::vector<PerformanceResult>> resultsBySize;
     for (const auto &result : results)
     {
@@ -226,7 +204,6 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
         }
     }
 
-    // Imprime tabela comparativa
     file << std::setw(20) << "Estrutura"
          << std::setw(12) << "Tamanho"
          << std::setw(15) << "Tempo Total"
@@ -251,7 +228,6 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
 
     file << std::endl;
 
-    // Estatísticas gerais
     file << "=== ESTATÍSTICAS GERAIS ===" << std::endl;
     file << std::endl;
 
@@ -262,7 +238,6 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
         return;
     }
 
-    // Calcula estatísticas por estrutura
     std::map<std::string, std::vector<std::chrono::nanoseconds>> timesByStructure;
     std::map<std::string, std::vector<size_t>> memoryByStructure;
 
@@ -297,13 +272,11 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
         file << std::endl;
     }
 
-    // Conclusões e insights
     file << "=== CONCLUSÕES E INSIGHTS ===" << std::endl;
     file << std::endl;
 
     file << "1. RANKING DE PERFORMANCE (melhor → pior):" << std::endl;
 
-    // Calcula tempo médio por estrutura para ranking
     std::vector<std::pair<std::string, double>> avgTimes;
     for (const auto &[structureType, times] : timesByStructure)
     {
@@ -319,7 +292,6 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
         }
     }
 
-    // Ordena por tempo médio
     std::sort(avgTimes.begin(), avgTimes.end(),
               [](const auto &a, const auto &b)
               { return a.second < b.second; });
@@ -353,28 +325,28 @@ void PerformanceAnalyzer::saveResultsToFile(const std::string &filename) const
 
 size_t PerformanceAnalyzer::estimateMemoryUsage(const DataStructure &structure, size_t dataSize) const
 {
-    size_t baseSize = dataSize * sizeof(int); // Dados básicos
+    size_t baseSize = dataSize * sizeof(int);
 
     std::string type = structure.getType();
 
     if (type.find("Vector") != std::string::npos)
     {
-        return baseSize; // Vetores são mais eficientes em memória
+        return baseSize;
     }
     else if (type.find("List") != std::string::npos && structure.getDynamic())
     {
-        return baseSize + (dataSize * sizeof(void *)); // Lista ligada tem ponteiros
+        return baseSize + (dataSize * sizeof(void *));
     }
     else if (type.find("Queue") != std::string::npos && structure.getDynamic())
     {
-        return baseSize + (dataSize * sizeof(void *)); // Fila ligada tem ponteiros
+        return baseSize + (dataSize * sizeof(void *));
     }
     else if (type.find("Stack") != std::string::npos && structure.getDynamic())
     {
-        return baseSize + (dataSize * sizeof(void *)); // Pilha ligada tem ponteiros
+        return baseSize + (dataSize * sizeof(void *));
     }
 
-    return baseSize; // Estruturas lineares da STL
+    return baseSize;
 }
 
 std::string PerformanceAnalyzer::formatTimeNano(const std::chrono::nanoseconds &time) const
@@ -431,21 +403,14 @@ std::vector<std::unique_ptr<DataStructure>> PerformanceAnalyzer::createAllStruct
 {
     std::vector<std::unique_ptr<DataStructure>> structures;
 
-    // Vetores
-    structures.push_back(std::make_unique<VectorStructure>(false)); // Linear
-    structures.push_back(std::make_unique<VectorStructure>(true));  // Dinâmico
-
-    // Listas
-    structures.push_back(std::make_unique<ListStructure>(false)); // Linear
-    structures.push_back(std::make_unique<ListStructure>(true));  // Dinâmica
-
-    // Filas
-    structures.push_back(std::make_unique<QueueStructure>(false)); // Linear
-    structures.push_back(std::make_unique<QueueStructure>(true));  // Dinâmica
-
-    // Pilhas
-    structures.push_back(std::make_unique<StackStructure>(false)); // Linear
-    structures.push_back(std::make_unique<StackStructure>(true));  // Dinâmica
+    structures.push_back(std::make_unique<VectorStructure>(false));
+    structures.push_back(std::make_unique<VectorStructure>(true));
+    structures.push_back(std::make_unique<ListStructure>(false));
+    structures.push_back(std::make_unique<ListStructure>(true));
+    structures.push_back(std::make_unique<QueueStructure>(false));
+    structures.push_back(std::make_unique<QueueStructure>(true));
+    structures.push_back(std::make_unique<StackStructure>(false));
+    structures.push_back(std::make_unique<StackStructure>(true));
 
     return structures;
 }
@@ -455,12 +420,10 @@ void PerformanceAnalyzer::setTestSizes(const std::vector<size_t> &sizes)
     testSizes = sizes;
 }
 
-// Implementação do createStructureFactories
 std::vector<PerformanceAnalyzer::StructureFactoryInfo> PerformanceAnalyzer::createStructureFactories() const
 {
     std::vector<PerformanceAnalyzer::StructureFactoryInfo> factories;
 
-    // Adiciona as fábricas para cada tipo de estrutura
     factories.push_back({"Linear Vector", false, []()
                          { return std::make_unique<VectorStructure>(false); }});
     factories.push_back({"Dynamic Vector", true, []()

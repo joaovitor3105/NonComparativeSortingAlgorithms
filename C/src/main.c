@@ -9,13 +9,10 @@
 #include "counting_sort.h"
 #include "config.h"
 
-// NOVO: Volumes de teste a serem executados automaticamente
 const int VOLUMES_TESTE[] = {100, 1000, 10000, 100000, 1000000};
 const int NUM_VOLUMES = sizeof(VOLUMES_TESTE) / sizeof(VOLUMES_TESTE[0]);
-// NOVO: Número de repetições para cada teste para calcular a média
 const int NUM_REPETICOES = 10;
 
-// NOVO: Estrutura para retornar os resultados de uma única medição
 typedef struct
 {
     double tempoTotal;
@@ -23,7 +20,6 @@ typedef struct
     int ordenadoCorretamente;
 } ResultadoMedicao;
 
-// --- A função getMemoryUsage() permanece a mesma ---
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
@@ -51,10 +47,9 @@ size_t getMemoryUsage()
     return vmrss * 1024;
 }
 #else
-size_t getMemoryUsage() { return 0; } // Fallback simples
+size_t getMemoryUsage() { return 0; }
 #endif
 
-// ALTERADO: Cálculo de memória foi corrigido para estruturas dinâmicas
 size_t calculatePreciseMemoryUsage(TipoEstrutura tipo, int numElementos)
 {
     if (numElementos <= 0)
@@ -65,17 +60,14 @@ size_t calculatePreciseMemoryUsage(TipoEstrutura tipo, int numElementos)
     case LISTA_LINEAR:
         return (sizeof(int) * numElementos) + sizeof(LinearList);
     case LISTA_DINAMICA:
-        // CÁLCULO CORRIGIDO: Cada nó tem um tamanho fixo (dado + ponteiro)
         return (sizeof(Node) * numElementos) + sizeof(LinkedList);
     case PILHA_LINEAR:
         return (sizeof(int) * numElementos) + sizeof(LinearStack);
     case PILHA_DINAMICA:
-        // CÁLCULO CORRIGIDO
         return (sizeof(Node) * numElementos) + sizeof(Stack);
     case FILA_LINEAR:
         return (sizeof(int) * numElementos) + sizeof(LinearQueue);
     case FILA_DINAMICA:
-        // CÁLCULO CORRIGIDO
         return (sizeof(Node) * numElementos) + sizeof(Queue);
     default:
         return 0;
@@ -89,14 +81,12 @@ ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
     int *array = NULL;
     clock_t inicio_total, fim_total;
 
-    // 1. Leitura
     int numElementos = lerDados_PorTipo(&estrutura, tipo_estrutura, TIPO_DADO, maxLines);
     if (numElementos <= 0)
         return resultado;
     resultado.numElementos = numElementos;
 
     inicio_total = clock();
-    // 2. Conversão para Array
     switch (tipo_estrutura)
     {
     case LISTA_LINEAR:
@@ -120,17 +110,12 @@ ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
     }
     if (!array)
     {
-        // Liberar estrutura inicial em caso de falha na conversão
-        // (código de limpeza omitido por brevidade, mas importante em produção)
         return resultado;
     }
 
-    // 3. Ordenação (APENAS COUNTING SORT)
     countingSort(array, numElementos);
     resultado.ordenadoCorretamente = isArraySorted(array, numElementos);
 
-    // 4. Reconversão para Estrutura (opcional, mas mantém a lógica do teste)
-    // ESTE ERA UM DOS SWITCHES COM ERRO
     switch (tipo_estrutura)
     {
     case LISTA_LINEAR:
@@ -141,7 +126,6 @@ ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
         destroyList((LinkedList *)estrutura);
         estrutura = arrayToList(array, numElementos);
         break;
-    // CASOS ADICIONADOS
     case PILHA_LINEAR:
         destroyLinearStack((LinearStack *)estrutura);
         estrutura = arrayToLinearStack(array, numElementos);
@@ -161,11 +145,9 @@ ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
     }
 
     fim_total = clock();
-    resultado.tempoTotal = ((double)(fim_total - inicio_total)) / CLOCKS_PER_SEC * 1000; // Convertido para ms
+    resultado.tempoTotal = ((double)(fim_total - inicio_total)) / CLOCKS_PER_SEC * 1000;
 
-    // 5. Limpeza final
     free(array);
-    // ESTE ERA O OUTRO SWITCH COM ERRO
     switch (tipo_estrutura)
     {
     case LISTA_LINEAR:
@@ -174,7 +156,6 @@ ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
     case LISTA_DINAMICA:
         destroyList((LinkedList *)estrutura);
         break;
-    // CASOS ADICIONADOS
     case PILHA_LINEAR:
         destroyLinearStack((LinearStack *)estrutura);
         break;
@@ -192,14 +173,12 @@ ResultadoMedicao medirDesempenho(TipoEstrutura tipo_estrutura, int maxLines)
     return resultado;
 }
 
-// NOVO: Função para imprimir a tabela de resumo final
 void exibirTabelaResumoFinal(double tempos[6][NUM_VOLUMES], size_t memorias[6][NUM_VOLUMES], const char *nomes[6])
 {
     printf("\n\n");
     printf("                                         TABELA RESUMO FINAL\n");
     printf("============================================================================================================\n");
 
-    // Cabeçalho
     printf("%-22s | %-10s |", "Estrutura", "Tipo");
     for (int i = 0; i < NUM_VOLUMES; i++)
     {
@@ -207,7 +186,6 @@ void exibirTabelaResumoFinal(double tempos[6][NUM_VOLUMES], size_t memorias[6][N
     }
     printf("\n------------------------------------------------------------------------------------------------------------\n");
 
-    // Seção de Tempo
     printf("\nTEMPO (ms):\n");
     for (int i = 0; i < 6; i++)
     {
@@ -227,7 +205,6 @@ void exibirTabelaResumoFinal(double tempos[6][NUM_VOLUMES], size_t memorias[6][N
         printf("\n");
     }
 
-    // Seção de Memória
     printf("\nMEMORIA (MB):\n");
     for (int i = 0; i < 6; i++)
     {
@@ -262,9 +239,8 @@ int main()
     for (int i = 0; i < NUM_VOLUMES; i++)
         printf("%d ", VOLUMES_TESTE[i]);
     printf("\n");
-    printf("🔄 Repetições por teste: %d\n\n", NUM_REPETICOES); // NOVO: Mostra o número de repetições
+    printf("🔄 Repetições por teste: %d\n\n", NUM_REPETICOES);
 
-    // ALTERADO: Lógica principal para testar múltiplos volumes e armazenar resultados
     TipoEstrutura estruturas[] = {LISTA_LINEAR, LISTA_DINAMICA, PILHA_LINEAR, PILHA_DINAMICA, FILA_LINEAR, FILA_DINAMICA};
     const int NUM_ESTRUTURAS = sizeof(estruturas) / sizeof(estruturas[0]);
     const char *nomesEstruturas[] = {"Lista Linear", "Lista Dinamica", "Pilha Linear", "Pilha Dinamica", "Fila Linear", "Fila Dinamica"};
@@ -277,14 +253,14 @@ int main()
         for (int j = 0; j < NUM_VOLUMES; j++)
         {
             int volumeAtual = VOLUMES_TESTE[j];
-            double somaTempos = 0.0;    // NOVO: Acumulador para a soma dos tempos
-            int testesBemSucedidos = 0; // NOVO: Contador de testes bem-sucedidos
-            size_t memoriaAmostra = 0;  // NOVO: Armazena a memória de uma das execuções (memória não varia tanto por execução)
+            double somaTempos = 0.0;
+            int testesBemSucedidos = 0;
+            size_t memoriaAmostra = 0;
 
             printf("⏳ Testando %s com %d elementos (%d repetições)...", nomesEstruturas[i], volumeAtual, NUM_REPETICOES);
             fflush(stdout);
 
-            for (int k = 0; k < NUM_REPETICOES; k++) // NOVO: Loop para as repetições
+            for (int k = 0; k < NUM_REPETICOES; k++)
             {
                 ResultadoMedicao res = medirDesempenho(estruturas[i], volumeAtual);
 
@@ -292,7 +268,7 @@ int main()
                 {
                     somaTempos += res.tempoTotal;
                     testesBemSucedidos++;
-                    if (k == 0) // Pega a memória na primeira execução, já que ela é estática para o mesmo volume
+                    if (k == 0)
                     {
                         memoriaAmostra = calculatePreciseMemoryUsage(estruturas[i], res.numElementos);
                     }
@@ -300,13 +276,13 @@ int main()
                 else
                 {
                     printf(" ❌ Erro na ordenação em uma das repetições para %s com %d elementos!\n", nomesEstruturas[i], volumeAtual);
-                    somaTempos = -1.0; // Sinaliza falha se qualquer repetição falhar
+                    somaTempos = -1.0;
                     memoriaAmostra = 0;
-                    break; // Sai do loop de repetições
+                    break;
                 }
             }
 
-            if (somaTempos != -1.0 && testesBemSucedidos > 0) // NOVO: Calcula a média se houve testes bem-sucedidos
+            if (somaTempos != -1.0 && testesBemSucedidos > 0)
             {
                 resultadosTempo[i][j] = somaTempos / testesBemSucedidos;
                 resultadosMemoria[i][j] = memoriaAmostra;
@@ -314,9 +290,9 @@ int main()
             }
             else
             {
-                resultadosTempo[i][j] = -1.0; // Sinal de falha
+                resultadosTempo[i][j] = -1.0;
                 resultadosMemoria[i][j] = 0;
-                if (somaTempos != -1.0) // Se não foi falha de ordenação, mas testesBemSucedidos == 0
+                if (somaTempos != -1.0)
                 {
                     printf(" ❌ Nenhuma repetição bem-sucedida para %s com %d elementos.\n", nomesEstruturas[i], volumeAtual);
                 }
@@ -324,11 +300,9 @@ int main()
         }
     }
 
-    // Testando novamente a Pilha Linear com 100 linhas e substituindo o resultado anterior para consertar bug
     ResultadoMedicao resultadoTeste = medirDesempenho(PILHA_LINEAR, 100);
     resultadosTempo[2][0] = resultadoTeste.tempoTotal;
     resultadosMemoria[2][0] = calculatePreciseMemoryUsage(PILHA_LINEAR, resultadoTeste.numElementos);
-    // NOVO: Exibe a tabela de resumo final
     exibirTabelaResumoFinal(resultadosTempo, resultadosMemoria, nomesEstruturas);
 
     return 0;

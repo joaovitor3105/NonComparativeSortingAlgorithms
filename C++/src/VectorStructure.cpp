@@ -1,91 +1,119 @@
 #include "VectorStructure.hpp"
 #include <algorithm>
 
-VectorStructure::VectorStructure(bool dynamic) : DataStructure(dynamic) {
-    if (isDynamic) {
-        capacity = 1; // Começa pequeno para forçar redimensionamentos
+VectorStructure::VectorStructure(bool dynamic) : DataStructure(dynamic)
+{
+    if (isDynamic)
+    {
+        capacity = 1;
         currentSize = 0;
         initializeDynamicArray();
     }
 }
 
-VectorStructure::~VectorStructure() {
-    if (isDynamic && dynamicArray) {
+VectorStructure::~VectorStructure()
+{
+    if (isDynamic && dynamicArray)
+    {
         delete[] dynamicArray;
     }
 }
 
-void VectorStructure::initializeDynamicArray() {
+void VectorStructure::initializeDynamicArray()
+{
     dynamicArray = new int[capacity];
 }
 
-void VectorStructure::resize() {
+void VectorStructure::resize()
+{
     size_t newCapacity = capacity * 2;
-    int* newArray = new int[newCapacity];
-    
-    for (size_t i = 0; i < currentSize; ++i) {
+    int *newArray = new int[newCapacity];
+
+    for (size_t i = 0; i < currentSize; ++i)
+    {
         newArray[i] = dynamicArray[i];
     }
-    
+
     delete[] dynamicArray;
     dynamicArray = newArray;
     capacity = newCapacity;
 }
 
-void VectorStructure::insert(int value) {
-    if (isDynamic) {
-        if (currentSize >= capacity) {
+void VectorStructure::insert(int value)
+{
+    if (isDynamic)
+    {
+        if (currentSize >= capacity)
+        {
             resize();
         }
         dynamicArray[currentSize++] = value;
-    } else {
+    }
+    else
+    {
         data.push_back(value);
     }
 }
 
-void VectorStructure::clear() {
-    if (isDynamic) {
+void VectorStructure::clear()
+{
+    if (isDynamic)
+    {
         currentSize = 0;
-        // Não deletamos o array, apenas resetamos o tamanho
-    } else {
+    }
+    else
+    {
         data.clear();
     }
 }
 
-std::vector<int> VectorStructure::toVector() const {
-    if (isDynamic) {
+std::vector<int> VectorStructure::toVector() const
+{
+    if (isDynamic)
+    {
         return std::vector<int>(dynamicArray, dynamicArray + currentSize);
-    } else {
+    }
+    else
+    {
         return data;
     }
 }
 
-void VectorStructure::fromVector(const std::vector<int>& vec) {
+void VectorStructure::fromVector(const std::vector<int> &vec)
+{
     clear();
-    
-    if (isDynamic) {
+
+    if (isDynamic)
+    {
         // Ajusta capacidade se necessário
-        while (capacity < vec.size()) {
+        while (capacity < vec.size())
+        {
             resize();
         }
-        
-        for (size_t i = 0; i < vec.size(); ++i) {
+
+        for (size_t i = 0; i < vec.size(); ++i)
+        {
             dynamicArray[i] = vec[i];
         }
         currentSize = vec.size();
-    } else {
+    }
+    else
+    {
         data = vec;
     }
 }
 
-std::string VectorStructure::getType() const {
+std::string VectorStructure::getType() const
+{
     return isDynamic ? "Dynamic Vector" : "Linear Vector";
 }
 
-size_t VectorStructure::size() const {
+size_t VectorStructure::size() const
+{
     return data.size();
 }
 
-bool VectorStructure::empty() const {
+bool VectorStructure::empty() const
+{
     return data.empty();
 }
