@@ -39,4 +39,4 @@ private:
     bool isEmpty() const;
 };
 
-#endif // STACKSTRUCTURE_HPP
+#endif
