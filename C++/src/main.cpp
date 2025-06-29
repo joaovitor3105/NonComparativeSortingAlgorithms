@@ -17,7 +17,7 @@
 #include "CSVReader.hpp"
 #include "PerformanceAnalyzer.hpp"
 
-#define ARQUIVO_ENTRADA "/home/joao-vitor/Área de trabalho/programacao/NonComparativeSortingAlgorithms/C/datasets/ratings.csv"
+#define ARQUIVO_ENTRADA "datasets/ratings.csv"
 
 const std::vector<size_t> VOLUMES_TESTE = {100, 1000, 10000, 100000, 1000000};
 const int NUM_REPETICOES = 10;

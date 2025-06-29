@@ -1,5 +1,5 @@
 public class Config {
-    public static final String ARQUIVO_ENTRADA = "/home/joao-vitor/Área de trabalho/programacao/NonComparativeSortingAlgorithms/C/datasets/ratings.csv";
+    public static final String ARQUIVO_ENTRADA = "datasets/ratings.csv";
 
     public enum TipoDado {
         MOVIE_IDS, RATINGS

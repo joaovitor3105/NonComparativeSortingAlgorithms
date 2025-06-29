@@ -1,4 +1,5 @@
 // Classe principal para testes de desempenho
+
 public class Main {
     private static final int[] VOLUMES_TESTE = { 100, 1000, 10000, 100000, 1000000 };
     private static final int NUM_REPETICOES = 10;

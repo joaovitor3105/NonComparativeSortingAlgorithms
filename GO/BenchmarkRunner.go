@@ -351,7 +351,7 @@ func main() {
 
 	for _, size := range sizes {
 		// Carregar dados
-		data, err := Utils.LoadRatingsCSV("/home/joao-vitor/Área de trabalho/programacao/NonComparativeSortingAlgorithms/C/datasets/ratings.csv", size)
+		data, err := Utils.LoadRatingsCSV("datasets/ratings.csv", size)
 		if err != nil {
 			// Se não conseguir ler o arquivo, criar dados de teste
 			fmt.Printf("Aviso: Usando dados aleatórios para tamanho %d\n", size)

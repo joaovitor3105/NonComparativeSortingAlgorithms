@@ -184,7 +184,7 @@ def main():
             "Pilha Dinâmica": lambda size: StackDynamic(),
         }
         
-        csv_path = "/home/joao-vitor/Área de trabalho/programacao/NonComparativeSortingAlgorithms/C/datasets/ratings.csv"
+        csv_path = "datasets/ratings.csv"
 
         for size in sizes_to_test:
             print(f"\n--- Testando com {size} elementos ---")
