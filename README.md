@@ -24,10 +24,6 @@ Este projeto apresenta uma análise comparativa aprofundada dos algoritmos de or
 
 ---
 
----
-
-## 🚀 Como Executar
-
 ### 📋 Pré-requisitos
 
 ```bash
