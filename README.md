@@ -172,7 +172,7 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 ## 📞 Contato
 
 Para dúvidas ou colaborações:
-- **Email**: joaopedrosilvasiqueira1@gmail.com
+- **Email**: joaovitorlobatoromualdo16@gmail.com
 - **Instituição**: CEFET-MG - Departamento de Engenharia de Computação
 - **Localização**: Divinópolis, Brasil
 
